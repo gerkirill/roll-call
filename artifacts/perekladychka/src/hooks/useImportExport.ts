@@ -113,21 +113,16 @@ export function useImportExport() {
   }, [setData]);
 
   // ── Text share (pk1: string) ───────────────────────────────────────────────
-  const shareData = useCallback(async (): Promise<'shared' | 'copied' | 'error'> => {
+  const shareData = useCallback(async (): Promise<
+    { result: 'copied' } | { result: 'error'; encoded: string }
+  > => {
+    const encoded = await encodeShareString(data);
     try {
-      const encoded = await encodeShareString(data);
-      if (navigator.share) {
-        await navigator.share({ text: encoded });
-        return 'shared';
-      } else {
-        await navigator.clipboard.writeText(encoded);
-        return 'copied';
-      }
+      await navigator.clipboard.writeText(encoded);
+      return { result: 'copied' };
     } catch (e) {
-      // User cancelled navigator.share — not an error worth surfacing
-      if (e instanceof DOMException && e.name === 'AbortError') return 'shared';
-      console.error('Share failed', e);
-      return 'error';
+      console.error('Clipboard write failed', e);
+      return { result: 'error', encoded };
     }
   }, [data]);
 

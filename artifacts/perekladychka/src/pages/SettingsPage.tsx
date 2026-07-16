@@ -13,9 +13,13 @@ export default function SettingsPage() {
   const [toast, setToast] = useState<Toast>(null);
 
   // Text-paste import state
+  // Text-paste import state
   const [showPastePanel, setShowPastePanel] = useState(false);
   const [pasteValue, setPasteValue] = useState('');
   const [pasteError, setPasteError] = useState('');
+
+  // Share fallback state (when clipboard write fails)
+  const [shareFallback, setShareFallback] = useState<string | null>(null);
 
   const showToast = (kind: 'success' | 'error', message: string) => {
     setToast({ kind, message });
@@ -47,10 +51,13 @@ export default function SettingsPage() {
 
   // ── Share / copy ───────────────────────────────────────────────────────────
   const handleShare = async () => {
-    const result = await shareData();
-    if (result === 'copied') showToast('success', 'Рядок скопійовано в буфер обміну.');
-    else if (result === 'error') showToast('error', 'Не вдалося поділитися даними.');
-    // 'shared' — navigator.share handled the UI
+    const outcome = await shareData();
+    if (outcome.result === 'copied') {
+      showToast('success', 'Рядок скопійовано в буфер обміну.');
+    } else {
+      // Clipboard unavailable — show the string so the user can copy manually
+      setShareFallback(outcome.encoded);
+    }
   };
 
   // ── Paste import ───────────────────────────────────────────────────────────
@@ -116,18 +123,42 @@ export default function SettingsPage() {
             </button>
 
             {/* Share as text */}
-            <button
-              onClick={handleShare}
-              className="w-full flex items-center gap-3 p-4 active-elevate text-left touch-manipulation border-b border-border"
-            >
-              <div className="w-10 h-10 rounded-full bg-primary/10 flex items-center justify-center shrink-0">
-                <Share2 className="w-5 h-5 text-primary" />
+            {!shareFallback ? (
+              <button
+                onClick={handleShare}
+                className="w-full flex items-center gap-3 p-4 active-elevate text-left touch-manipulation border-b border-border"
+              >
+                <div className="w-10 h-10 rounded-full bg-primary/10 flex items-center justify-center shrink-0">
+                  <Share2 className="w-5 h-5 text-primary" />
+                </div>
+                <div className="flex-1">
+                  <div className="font-semibold">Поділитися текстом</div>
+                  <div className="text-sm text-muted-foreground mt-0.5">Скопіювати рядок для вставки в месенджер</div>
+                </div>
+              </button>
+            ) : (
+              <div className="p-4 flex flex-col gap-3 border-b border-border">
+                <div className="flex items-center justify-between">
+                  <span className="text-sm font-semibold">Скопіюйте рядок вручну</span>
+                  <button
+                    onClick={() => setShareFallback(null)}
+                    className="w-7 h-7 flex items-center justify-center rounded-full bg-secondary text-secondary-foreground"
+                  >
+                    <X className="w-4 h-4" />
+                  </button>
+                </div>
+                <textarea
+                  readOnly
+                  value={shareFallback}
+                  rows={3}
+                  onFocus={e => e.target.select()}
+                  className="w-full px-3 py-2 text-xs font-mono bg-background border border-input rounded-xl resize-none focus:outline-none focus:ring-2 focus:ring-ring"
+                />
+                <p className="text-xs text-muted-foreground px-1">
+                  Виділіть текст вище та скопіюйте його (довге натискання → Копіювати).
+                </p>
               </div>
-              <div className="flex-1">
-                <div className="font-semibold">Поділитися текстом</div>
-                <div className="text-sm text-muted-foreground mt-0.5">Надіслати через месенджер (pk1:…)</div>
-              </div>
-            </button>
+            )}
 
             {/* Hidden file input */}
             <input
