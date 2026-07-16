@@ -1,4 +1,4 @@
-import { useCallback } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import { useAppData } from './useAppData';
 import type { AppData, Soldier, RollCallSession } from '../types';
 import { encodeShareString, decodeShareString } from '../utils/share';
@@ -76,8 +76,41 @@ function applyMerge(
   return { status: 'ok', soldiersAdded, soldiersUpdated, sessionsAdded };
 }
 
+/** Legacy execCommand fallback for contexts where clipboard API is blocked. */
+function legacyCopy(text: string): boolean {
+  try {
+    const ta = document.createElement('textarea');
+    ta.value = text;
+    ta.readOnly = true;
+    ta.style.cssText = 'position:fixed;opacity:0;top:0;left:0';
+    document.body.appendChild(ta);
+    ta.select();
+    ta.setSelectionRange(0, text.length);
+    const ok = document.execCommand('copy');
+    ta.remove();
+    return ok;
+  } catch {
+    return false;
+  }
+}
+
 export function useImportExport() {
   const { data, setData } = useAppData();
+
+  // Pre-encode share string so it is ready before the user clicks,
+  // avoiding the async gap that makes Safari drop the user-gesture context.
+  const encodedRef = useRef<string | null>(null);
+  const [, forceUpdate] = useState(0);
+  useEffect(() => {
+    let cancelled = false;
+    encodeShareString(data).then(s => {
+      if (!cancelled) {
+        encodedRef.current = s;
+        forceUpdate(n => n + 1);
+      }
+    });
+    return () => { cancelled = true; };
+  }, [data]);
 
   // ── File export ────────────────────────────────────────────────────────────
   const exportData = useCallback(() => {
@@ -116,14 +149,24 @@ export function useImportExport() {
   const shareData = useCallback(async (): Promise<
     { result: 'copied' } | { result: 'error'; encoded: string }
   > => {
-    const encoded = await encodeShareString(data);
-    try {
-      await navigator.clipboard.writeText(encoded);
-      return { result: 'copied' };
-    } catch (e) {
-      console.error('Clipboard write failed', e);
-      return { result: 'error', encoded };
+    // Use pre-encoded string if ready; fall back to encoding now (should rarely happen).
+    const encoded = encodedRef.current ?? await encodeShareString(data);
+
+    // 1. Modern Clipboard API (requires secure context + user gesture)
+    if (navigator.clipboard && window.isSecureContext) {
+      try {
+        await navigator.clipboard.writeText(encoded);
+        return { result: 'copied' };
+      } catch (e) {
+        console.error('Clipboard API failed, trying execCommand', e);
+      }
     }
+
+    // 2. Legacy execCommand fallback
+    if (legacyCopy(encoded)) return { result: 'copied' };
+
+    // 3. Nothing worked — show the string in UI
+    return { result: 'error', encoded };
   }, [data]);
 
   // ── Text import (pk1: string) ──────────────────────────────────────────────

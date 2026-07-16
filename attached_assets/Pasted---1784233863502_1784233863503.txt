@@ -1,0 +1,91 @@
+Досить стабільно, якщо копіювання відбувається після явного натискання кнопки. Для звичайного сценарію «натиснув → текст скопійовано» в актуальних мобільних Chrome і Safari я б розраховував на високу надійність — умовно 9/10.
+
+button.addEventListener('click', async () => {
+  try {
+    await navigator.clipboard.writeText(text);
+    showMessage('Скопійовано');
+  } catch (error) {
+    showMessage('Не вдалося скопіювати');
+    console.error(error);
+  }
+});
+
+Коли працює стабільно
+
+Потрібні такі умови:
+
+* сторінка відкрита через HTTPS;
+* виклик зроблений безпосередньо в обробнику click або touch;
+* сторінка активна і має фокус;
+* текст уже підготовлений до натискання;
+* це звичайна вкладка браузера, а не обмежений iframe.
+
+navigator.clipboard.writeText() підтримується сучасними браузерами, а Safari має Async Clipboard API починаючи із Safari 13.1. API доступний лише в secure context.  
+
+Основна пастка — асинхронність
+
+Ось такий код може періодично ламатися, особливо в Safari:
+
+button.addEventListener('click', async () => {
+  const response = await fetch('/generate-text');
+  const text = await response.text();
+  await navigator.clipboard.writeText(text);
+});
+
+Поки виконується fetch, браузер може втратити ознаку, що операція була безпосередньо викликана користувачем. Safari вимагає, щоб запис відбувався в контексті користувацького жесту, і відхиляє Promise поза ним.  
+
+Надійніше:
+
+let preparedText = '';
+async function prepareText() {
+  preparedText = await fetch('/generate-text').then(r => r.text());
+}
+button.addEventListener('click', async () => {
+  try {
+    await navigator.clipboard.writeText(preparedText);
+  } catch {
+    // Показати текст для ручного копіювання
+  }
+});
+
+Тобто дані завантажуються заздалегідь, а натискання лише копіює.
+
+Де можливі проблеми
+
+Менш передбачувані сценарії:
+
+* автоматичне копіювання при завантаженні сторінки;
+* копіювання після setTimeout, тривалого await або мережевого запиту;
+* сторінка у фоновій вкладці;
+* сайт усередині iframe без дозволу clipboard-write;
+* вбудовані браузери Telegram, Instagram, Facebook та інші WebView;
+* HTTP, локальний IP або нестандартний WebView-контекст.
+
+Специфікація вимагає, щоб документ мав фокус. Для iframe у Chromium також може знадобитися відповідна Permissions Policy. Поведінка між Chromium, Safari та Firefox дещо відрізняється.  
+
+Практичний варіант із fallback
+
+function legacyCopy(text) {
+  const textarea = document.createElement('textarea');
+  textarea.value = text;
+  textarea.readOnly = true;
+  textarea.style.position = 'fixed';
+  textarea.style.opacity = '0';
+  document.body.appendChild(textarea);
+  textarea.select();
+  textarea.setSelectionRange(0, text.length);
+  const success = document.execCommand('copy');
+  textarea.remove();
+  return success;
+}
+async function copyText(text) {
+  if (navigator.clipboard && window.isSecureContext) {
+    await navigator.clipboard.writeText(text);
+    return true;
+  }
+  return legacyCopy(text);
+}
+
+document.execCommand('copy') застарілий, але досі придатний як резервний механізм. Основним способом має залишатися navigator.clipboard.writeText().  
+
+Висновок: для кнопки «Копіювати» на HTTPS-сайті — цілком production-ready. Для прихованого або автоматичного копіювання, особливо після асинхронної операції, покладатися на нього не варто.
