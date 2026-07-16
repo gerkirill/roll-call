@@ -5,9 +5,9 @@ import type { Soldier } from '../types';
 export function useRoster() {
   const { data, setData } = useAppData();
 
-  const addSoldier = useCallback((s: Omit<Soldier, 'id'>) => {
+  const addSoldier = useCallback((s: Omit<Soldier, 'id' | 'updatedAt'>) => {
     const id = crypto.randomUUID();
-    const newSoldier: Soldier = { ...s, id };
+    const newSoldier: Soldier = { ...s, id, updatedAt: new Date().toISOString() };
     setData(prev => ({
       ...prev,
       soldiers: [...prev.soldiers, newSoldier]
@@ -15,9 +15,10 @@ export function useRoster() {
   }, [setData]);
 
   const updateSoldier = useCallback((s: Soldier) => {
+    const updated: Soldier = { ...s, updatedAt: new Date().toISOString() };
     setData(prev => ({
       ...prev,
-      soldiers: prev.soldiers.map(soldier => soldier.id === s.id ? s : soldier)
+      soldiers: prev.soldiers.map(soldier => soldier.id === s.id ? updated : soldier)
     }));
   }, [setData]);
 

@@ -24,6 +24,7 @@ export type Soldier = {
   id: string;
   lastName: string;
   firstName?: string;
+  updatedAt?: string;
 };
 
 export type RollCallEntry = {
