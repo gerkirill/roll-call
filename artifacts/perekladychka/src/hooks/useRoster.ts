@@ -1,6 +1,7 @@
 import { useCallback } from 'react';
 import { useAppData } from './useAppData';
 import type { Soldier } from '../types';
+import { arrayMove } from '@dnd-kit/sortable';
 
 export function useRoster() {
   const { data, setData } = useAppData();
@@ -29,10 +30,18 @@ export function useRoster() {
     }));
   }, [setData]);
 
+  const reorderSoldiers = useCallback((fromIndex: number, toIndex: number) => {
+    setData(prev => ({
+      ...prev,
+      soldiers: arrayMove(prev.soldiers, fromIndex, toIndex)
+    }));
+  }, [setData]);
+
   return {
     soldiers: data.soldiers,
     addSoldier,
     updateSoldier,
-    deleteSoldier
+    deleteSoldier,
+    reorderSoldiers
   };
 }
