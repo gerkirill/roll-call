@@ -195,15 +195,15 @@ export default function SettingsPage() {
       ? 'Підготовка тексту…'
       : shareState.status === 'error'
         ? 'Повторити підготовку'
-        : 'Скопіювати текст';
+        : 'Скопіювати у вигляді тексту';
 
   const shareSubtitle = shareState.status === 'preparing'
-    ? 'Стискаємо актуальні дані'
+    ? 'Готуємо текст для надсилання в месенджері'
     : shareState.status === 'error'
       ? <>Не вдалося підготувати рядок. Натисніть, щоб повторити.<br /><span className='text-xs text-destructive'>{shareState.message}</span></>
       : isCopying
         ? 'Браузер виконує запит на копіювання'
-        : `Готово: ${shareState.text.length.toLocaleString('uk-UA')} символів`;
+        : `Для надсилання в месенджері · ${shareState.text.length.toLocaleString('uk-UA')} символів`;
 
   const formatMergeResult = (result: { soldiersAdded: number; soldiersUpdated: number; sessionsAdded: number }) => {
     const parts: string[] = [];
@@ -251,9 +251,20 @@ export default function SettingsPage() {
         )}
 
         <section className='flex flex-col gap-3'>
+          <h2 className='text-sm font-bold text-muted-foreground uppercase tracking-wider px-1'>Про додаток</h2>
+          <div className='bg-card border border-border rounded-2xl p-4 shadow-sm flex items-start gap-4'>
+            <div className='w-12 h-12 rounded-2xl bg-primary flex items-center justify-center shrink-0'><Info className='w-6 h-6 text-primary-foreground' /></div>
+            <div><div className='font-bold text-lg mb-1'>Перекличка</div><div className='text-sm text-muted-foreground mb-3'>Версія 1.0.0</div><p className='text-sm leading-relaxed'>Швидкий інструмент для ведення переклички. Всі дані зберігаються виключно на вашому пристрої.</p></div>
+          </div>
+        </section>
+
+        <section className='flex flex-col gap-3'>
           <h2 className='text-sm font-bold text-muted-foreground uppercase tracking-wider px-1'>Резервне копіювання</h2>
           <div className='bg-card border border-border rounded-2xl overflow-hidden shadow-sm'>
-            <SettingsRow icon={<Download className='w-5 h-5' />} title='Експортувати у файл' subtitle='Зберегти JSON-файл на пристрій' onClick={exportData} />
+            <SettingsRow icon={<Download className='w-5 h-5' />} title='Експортувати у файл' subtitle='Зберегти військовослужбовців і переклички у файл' onClick={exportData} />
+
+            <input type='file' accept='.json' ref={fileInputRef} onChange={handleFileChange} className='hidden' />
+            <SettingsRow icon={<Upload className='w-5 h-5' />} title='Імпортувати з файлу' subtitle='Додати дані з резервної копії до наявних' onClick={() => fileInputRef.current?.click()} />
 
             {!manualCopy ? (
               <SettingsRow
@@ -275,11 +286,8 @@ export default function SettingsPage() {
               </div>
             )}
 
-            <input type='file' accept='.json' ref={fileInputRef} onChange={handleFileChange} className='hidden' />
-            <SettingsRow icon={<Upload className='w-5 h-5' />} title='Імпортувати з файлу' subtitle='Об’єднати з JSON-файлом резервної копії' onClick={() => fileInputRef.current?.click()} />
-
             {!showPaste ? (
-              <SettingsRow icon={<ClipboardPaste className='w-5 h-5' />} title='Вставити з тексту' subtitle='Об’єднати з рядка pk1:…' onClick={() => { setShowPaste(true); setPasteError(''); }} last />
+              <SettingsRow icon={<ClipboardPaste className='w-5 h-5' />} title='Імпортувати з тексту' subtitle='Поєднати дані з тексту з наявними' onClick={() => { setShowPaste(true); setPasteError(''); }} last />
             ) : (
               <div className='p-4 flex flex-col gap-3'>
                 <div className='flex items-center justify-between'>
@@ -298,7 +306,7 @@ export default function SettingsPage() {
           <h2 className='text-sm font-bold text-muted-foreground uppercase tracking-wider px-1'>Небезпечна зона</h2>
           <div className='bg-card border border-border rounded-2xl overflow-hidden shadow-sm'>
             {!confirmClear ? (
-              <SettingsRow icon={<Trash2 className='w-5 h-5' />} title='Видалити всі дані' subtitle='Бійці та переклички будуть знищені' onClick={() => setConfirmClear(true)} destructive last />
+              <SettingsRow icon={<Trash2 className='w-5 h-5' />} title='Видалити всі дані' subtitle='Бійці та переклички будуть видалені' onClick={() => setConfirmClear(true)} destructive last />
             ) : (
               <div className='p-4 flex flex-col gap-3'>
                 <p className='text-sm font-medium text-destructive'>Ви впевнені? Це незворотно — всі бійці та переклички будуть видалені.</p>
@@ -308,14 +316,6 @@ export default function SettingsPage() {
                 </div>
               </div>
             )}
-          </div>
-        </section>
-
-        <section className='flex flex-col gap-3 mt-2'>
-          <h2 className='text-sm font-bold text-muted-foreground uppercase tracking-wider px-1'>Про додаток</h2>
-          <div className='bg-card border border-border rounded-2xl p-4 shadow-sm flex items-start gap-4'>
-            <div className='w-12 h-12 rounded-2xl bg-primary flex items-center justify-center shrink-0'><Info className='w-6 h-6 text-primary-foreground' /></div>
-            <div><div className='font-bold text-lg mb-1'>Перекличка</div><div className='text-sm text-muted-foreground mb-3'>Версія 1.0.0</div><p className='text-sm leading-relaxed'>Швидкий інструмент для ведення переклички. Всі дані зберігаються виключно на вашому пристрої.</p></div>
           </div>
         </section>
       </div>
