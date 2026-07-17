@@ -2,12 +2,13 @@ import { useCallback } from 'react';
 import { useAppData } from './useAppData';
 import type { Soldier } from '../types';
 import { arrayMove } from '@dnd-kit/sortable';
+import { nanoid } from '../utils/id';
 
 export function useRoster() {
   const { data, setData } = useAppData();
 
   const addSoldier = useCallback((s: Omit<Soldier, 'id' | 'updatedAt'>) => {
-    const id = crypto.randomUUID();
+    const id = nanoid(8);
     const newSoldier: Soldier = { ...s, id, updatedAt: new Date().toISOString() };
     setData(prev => ({
       ...prev,
