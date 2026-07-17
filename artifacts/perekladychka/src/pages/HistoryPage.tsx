@@ -1,3 +1,4 @@
+import { useState } from "react";
 import { useLocation, useRoute } from "wouter";
 import { format, parseISO, differenceInMinutes } from "date-fns";
 import { uk } from "date-fns/locale";
@@ -12,6 +13,7 @@ export default function HistoryPage() {
   const [, setLocation] = useLocation();
   const { sessions } = useRollCall();
   const { soldiers } = useRoster();
+  const [showOnlyAbsent, setShowOnlyAbsent] = useState(false);
 
   const sessionId = params?.id;
   
@@ -33,16 +35,12 @@ export default function HistoryPage() {
       : 0;
 
     const markedMap = new Map(session.entries.map(e => [e.soldierId, e.status]));
-    
-    // Sort soldiers: marked ones first (grouped by status), then unmarked
-    const sortedSoldiers = [...soldiers].sort((a, b) => {
-      const aStatus = markedMap.get(a.id);
-      const bStatus = markedMap.get(b.id);
-      if (aStatus && !bStatus) return -1;
-      if (!aStatus && bStatus) return 1;
-      if (aStatus && bStatus && aStatus !== bStatus) return aStatus.localeCompare(bStatus);
-      return a.lastName.localeCompare(b.lastName);
-    });
+    const absentCount = soldiers.filter(soldier => markedMap.get(soldier.id) !== 'present').length;
+
+    // Журнал наслідує порядок особового складу, включно з імпортом і ручним сортуванням.
+    const visibleSoldiers = showOnlyAbsent
+      ? soldiers.filter(soldier => markedMap.get(soldier.id) !== 'present')
+      : soldiers;
 
     return (
       <div className="flex flex-col min-h-[100dvh] bg-background">
@@ -60,13 +58,42 @@ export default function HistoryPage() {
           </div>
         </header>
 
+        <div className="sticky top-14 z-30 bg-background/95 backdrop-blur border-b border-border px-4 py-3 shadow-xs">
+          <div className="grid grid-cols-2 gap-2 max-w-md mx-auto">
+            <button
+              type="button"
+              onClick={() => setShowOnlyAbsent(false)}
+              aria-pressed={!showOnlyAbsent}
+              className={`h-10 rounded-lg text-sm font-semibold border transition-colors touch-manipulation ${
+                !showOnlyAbsent
+                  ? "bg-primary text-primary-foreground border-primary"
+                  : "bg-card text-muted-foreground border-border active-elevate"
+              }`}
+            >
+              Усі ({soldiers.length})
+            </button>
+            <button
+              type="button"
+              onClick={() => setShowOnlyAbsent(true)}
+              aria-pressed={showOnlyAbsent}
+              className={`h-10 rounded-lg text-sm font-semibold border transition-colors touch-manipulation ${
+                showOnlyAbsent
+                  ? "bg-primary text-primary-foreground border-primary"
+                  : "bg-card text-muted-foreground border-border active-elevate"
+              }`}
+            >
+              Лише відсутні ({absentCount})
+            </button>
+          </div>
+        </div>
+
         <div className="flex-1 overflow-y-auto px-4 py-4 pb-8 flex flex-col gap-3">
-          {sortedSoldiers.map(soldier => {
+          {visibleSoldiers.map(soldier => {
             const status = markedMap.get(soldier.id);
             return (
-              <div key={soldier.id} className="bg-card border border-border rounded-xl p-3 flex items-center justify-between">
-                <div>
-                  <div className="font-bold text-foreground text-[15px]">{soldier.lastName} {soldier.firstName}</div>
+              <div key={soldier.id} className="bg-card border border-border rounded-xl p-3 flex items-center justify-between gap-3">
+                <div className="min-w-0">
+                  <div className="font-bold text-foreground text-[15px] truncate">{soldier.lastName} {soldier.firstName}</div>
                 </div>
                 {status ? (
                   <div className="shrink-0 flex items-center gap-1.5 bg-secondary px-2.5 py-1.5 rounded-lg border border-border">
@@ -81,6 +108,12 @@ export default function HistoryPage() {
               </div>
             );
           })}
+
+          {visibleSoldiers.length === 0 && (
+            <div className="text-center py-10 text-muted-foreground bg-card/50 border-2 border-dashed border-border rounded-2xl">
+              Усі військовослужбовці були в строю.
+            </div>
+          )}
         </div>
       </div>
     );
