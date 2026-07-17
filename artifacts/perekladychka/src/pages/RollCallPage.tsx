@@ -44,6 +44,7 @@ export default function RollCallPage() {
   const markedIds = new Set(entries.map(e => e.soldierId));
   const entriesBySoldierId = new Map(entries.map(entry => [entry.soldierId, entry]));
 
+  // Both sections follow the source roster order, including imported and manually reordered soldiers.
   const unmarkedSoldiers = soldiers.filter(soldier => !markedIds.has(soldier.id));
   const markedSoldiers = soldiers.flatMap(soldier => {
     const entry = entriesBySoldierId.get(soldier.id);
