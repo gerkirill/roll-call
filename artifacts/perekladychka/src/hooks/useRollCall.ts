@@ -1,6 +1,7 @@
 import { useCallback } from 'react';
 import { useAppData } from './useAppData';
 import type { RollCallSession, StoredStatus } from '../types';
+import { nanoid } from '../utils/id';
 
 export function useRollCall() {
   const { data, setData } = useAppData();
@@ -12,7 +13,7 @@ export function useRollCall() {
   const previousSession = [...data.sessions].reverse().find(s => !!s.completedAt) || null;
 
   const startSession = useCallback(() => {
-    const id = crypto.randomUUID();
+    const id = nanoid(8);
     const newSession: RollCallSession = {
       id,
       startedAt: new Date().toISOString(),
