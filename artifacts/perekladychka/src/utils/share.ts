@@ -26,35 +26,34 @@ function base64urlToUint8(str: string): Uint8Array {
 
 // ── gzip via native Compression Streams API ─────────────────────────────────
 
-async function collectStream(readable: ReadableStream<Uint8Array>): Promise<Uint8Array> {
-  const chunks: Uint8Array[] = [];
-  const reader = readable.getReader();
-  for (;;) {
-    const { done, value } = await reader.read();
-    if (done) break;
-    chunks.push(value);
-  }
-  const total = chunks.reduce((n, c) => n + c.length, 0);
-  const out = new Uint8Array(total);
-  let offset = 0;
-  for (const c of chunks) { out.set(c, offset); offset += c.length; }
-  return out;
+function toArrayBuffer(bytes: Uint8Array): ArrayBuffer {
+  const copy = new Uint8Array(bytes.byteLength);
+  copy.set(bytes);
+  return copy.buffer;
 }
 
 async function gzipCompress(input: Uint8Array): Promise<Uint8Array> {
-  const cs = new CompressionStream('gzip');
-  const writer = cs.writable.getWriter();
-  await writer.write(input as unknown as Uint8Array<ArrayBuffer>);
-  await writer.close();
-  return collectStream(cs.readable);
+  if (typeof CompressionStream === 'undefined') {
+    throw new Error('цей браузер не підтримує CompressionStream');
+  }
+
+  const compressedStream = new Blob([toArrayBuffer(input)])
+    .stream()
+    .pipeThrough(new CompressionStream('gzip'));
+
+  return new Uint8Array(await new Response(compressedStream).arrayBuffer());
 }
 
 async function gzipDecompress(input: Uint8Array): Promise<Uint8Array> {
-  const ds = new DecompressionStream('gzip');
-  const writer = ds.writable.getWriter();
-  await writer.write(input as unknown as Uint8Array<ArrayBuffer>);
-  await writer.close();
-  return collectStream(ds.readable);
+  if (typeof DecompressionStream === 'undefined') {
+    throw new Error('цей браузер не підтримує DecompressionStream');
+  }
+
+  const decompressedStream = new Blob([toArrayBuffer(input)])
+    .stream()
+    .pipeThrough(new DecompressionStream('gzip'));
+
+  return new Uint8Array(await new Response(decompressedStream).arrayBuffer());
 }
 
 // ── Public API ───────────────────────────────────────────────────────────────
