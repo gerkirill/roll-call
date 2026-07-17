@@ -6,7 +6,6 @@ import { Check, ChevronLeft, Calendar } from "lucide-react";
 import { useRoster } from "@/hooks/useRoster";
 import { useRollCall } from "@/hooks/useRollCall";
 import { STATUS_EMOJI, STATUS_LABELS, Status, StoredStatus } from "@/types";
-import { cn } from "@/lib/utils";
 
 function formatStatusTime(isoString: string) {
   const date = parseISO(isoString);
