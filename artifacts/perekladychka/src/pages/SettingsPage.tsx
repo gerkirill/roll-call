@@ -1,24 +1,54 @@
-import { useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { Download, Upload, Share2, ClipboardPaste, Trash2, Info, X } from "lucide-react";
 import { Layout } from "@/components/Layout";
 import { useImportExport } from "@/hooks/useImportExport";
+import { useAppData } from "@/hooks/useAppData";
+import { encodeShareString } from "@/utils/share";
+
+/** execCommand fallback for contexts where Clipboard API is unavailable. */
+function legacyCopy(text: string): boolean {
+  try {
+    const ta = document.createElement('textarea');
+    ta.value = text;
+    ta.readOnly = true;
+    ta.style.cssText = 'position:fixed;top:0;left:0;opacity:0';
+    document.body.appendChild(ta);
+    ta.select();
+    ta.setSelectionRange(0, text.length);
+    const ok = document.execCommand('copy');
+    ta.remove();
+    return ok;
+  } catch {
+    return false;
+  }
+}
 
 type Toast = { kind: 'success' | 'error'; message: string } | null;
 
 export default function SettingsPage() {
-  const { exportData, importData, shareData, importFromString, clearData } = useImportExport();
+  const { exportData, importData, importFromString, clearData } = useImportExport();
+  const { data } = useAppData();
 
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [confirmClear, setConfirmClear] = useState(false);
   const [toast, setToast] = useState<Toast>(null);
 
-  // Text-paste import state
+  // Pre-encode share string on page load so it is ready before the user clicks.
+  // This avoids the async gap that causes browsers (especially Safari) to drop
+  // the "user gesture" context before clipboard.writeText is called.
+  const shareStringRef = useRef<string | null>(null);
+  useEffect(() => {
+    let cancelled = false;
+    encodeShareString(data).then(s => { if (!cancelled) shareStringRef.current = s; });
+    return () => { cancelled = true; };
+  }, [data]);
+
   // Text-paste import state
   const [showPastePanel, setShowPastePanel] = useState(false);
   const [pasteValue, setPasteValue] = useState('');
   const [pasteError, setPasteError] = useState('');
 
-  // Share fallback state (when clipboard write fails)
+  // Share fallback state (when all clipboard methods fail)
   const [shareFallback, setShareFallback] = useState<string | null>(null);
 
   const showToast = (kind: 'success' | 'error', message: string) => {
@@ -50,14 +80,32 @@ export default function SettingsPage() {
   };
 
   // ── Share / copy ───────────────────────────────────────────────────────────
+  // IMPORTANT: no await before clipboard.writeText — every await between the
+  // click event and the write causes Safari/Chrome to drop the user-gesture
+  // context and reject the clipboard permission.
   const handleShare = async () => {
-    const outcome = await shareData();
-    if (outcome.result === 'copied') {
-      showToast('success', 'Рядок скопійовано в буфер обміну.');
-    } else {
-      // Clipboard unavailable — show the string so the user can copy manually
-      setShareFallback(outcome.encoded);
+    const text = shareStringRef.current;
+    if (!text) return;
+
+    // 1. Modern Clipboard API
+    if (navigator.clipboard && window.isSecureContext) {
+      try {
+        await navigator.clipboard.writeText(text);
+        showToast('success', 'Рядок скопійовано в буфер обміну.');
+        return;
+      } catch (e) {
+        console.error('Clipboard API failed, trying execCommand', e);
+      }
     }
+
+    // 2. Legacy execCommand fallback
+    if (legacyCopy(text)) {
+      showToast('success', 'Рядок скопійовано в буфер обміну.');
+      return;
+    }
+
+    // 3. Show the string in UI for manual copy
+    setShareFallback(text);
   };
 
   // ── Paste import ───────────────────────────────────────────────────────────
