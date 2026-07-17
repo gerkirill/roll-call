@@ -1,4 +1,4 @@
-import { useState, useState as useReactState } from "react";
+import { useState } from "react";
 import { Link } from "wouter";
 import {
   DndContext,
@@ -19,13 +19,26 @@ import { Layout } from "@/components/Layout";
 import { useRoster } from "@/hooks/useRoster";
 import { Soldier } from "@/types";
 import { getAccentIndex, setAccent, removeAccent, splitChars } from "@/utils/accent";
-import { Plus, User, Trash2, X, GripVertical } from "lucide-react";
+import { ClipboardPaste, Plus, User, Trash2, X, GripVertical } from "lucide-react";
 import * as Dialog from "@radix-ui/react-dialog";
 import { cn } from "@/lib/utils";
 
+type NewSoldier = Omit<Soldier, "id" | "updatedAt">;
+
 export default function RosterPage() {
-  const { soldiers, addSoldier, updateSoldier, deleteSoldier, reorderSoldiers } = useRoster();
-  const [editingSoldier, setEditingSoldier] = useReactState<Soldier | null | "new">(null);
+  const {
+    soldiers,
+    addSoldier,
+    addSoldiers,
+    updateSoldier,
+    deleteSoldier,
+    reorderSoldiers,
+  } = useRoster();
+  const [editingSoldier, setEditingSoldier] = useState<Soldier | null | "new">(null);
+  const [isImportOpen, setIsImportOpen] = useState(false);
+  const [importText, setImportText] = useState("");
+
+  const parsedSoldiers = parseRosterText(importText);
 
   const sensors = useSensors(
     useSensor(PointerSensor, {
@@ -46,6 +59,17 @@ export default function RosterPage() {
     }
   };
 
+  const handleImportOpenChange = (open: boolean) => {
+    setIsImportOpen(open);
+    if (!open) setImportText("");
+  };
+
+  const handleImport = () => {
+    if (parsedSoldiers.length === 0) return;
+    addSoldiers(parsedSoldiers);
+    handleImportOpenChange(false);
+  };
+
   return (
     <Layout>
       <div className="flex-1 p-4 md:p-6 flex flex-col gap-4">
@@ -57,6 +81,7 @@ export default function RosterPage() {
           <button
             onClick={() => setEditingSoldier("new")}
             className="flex items-center justify-center w-10 h-10 bg-primary text-primary-foreground rounded-full active-elevate shadow-sm touch-manipulation"
+            aria-label="Додати військовослужбовця"
           >
             <Plus className="w-5 h-5" />
           </button>
@@ -64,8 +89,32 @@ export default function RosterPage() {
 
         <div className="flex flex-col gap-2 pb-20">
           {soldiers.length === 0 ? (
-            <div className="text-center py-10 text-muted-foreground">
-              Список порожній. Додайте військовослужбовців.
+            <div className="flex flex-col items-center text-center py-10 px-4">
+              <div className="w-14 h-14 rounded-full bg-secondary/50 flex items-center justify-center mb-4">
+                <User className="w-7 h-7 text-muted-foreground" />
+              </div>
+              <div className="font-semibold mb-1">Список порожній</div>
+              <div className="text-sm text-muted-foreground max-w-xs mb-6">
+                Додайте військовослужбовців вручну або вставте готовий список із тексту.
+              </div>
+              <div className="w-full max-w-sm flex flex-col gap-3">
+                <button
+                  type="button"
+                  onClick={() => setIsImportOpen(true)}
+                  className="h-14 px-4 flex items-center justify-center gap-2 bg-primary text-primary-foreground font-bold rounded-xl active-elevate touch-manipulation shadow-sm"
+                >
+                  <ClipboardPaste className="w-5 h-5" />
+                  Імпортувати з тексту
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setEditingSoldier("new")}
+                  className="h-14 px-4 flex items-center justify-center gap-2 bg-secondary text-secondary-foreground font-semibold rounded-xl active-elevate touch-manipulation"
+                >
+                  <Plus className="w-5 h-5" />
+                  Додати вручну
+                </button>
+              </div>
             </div>
           ) : (
             <DndContext
@@ -135,6 +184,60 @@ export default function RosterPage() {
           </Dialog.Content>
         </Dialog.Portal>
       </Dialog.Root>
+
+      <Dialog.Root open={isImportOpen} onOpenChange={handleImportOpenChange}>
+        <Dialog.Portal>
+          <Dialog.Overlay className="fixed inset-0 bg-black/60 z-50 animate-in fade-in" />
+          <Dialog.Content className="fixed bottom-0 left-0 right-0 z-50 max-h-[90vh] overflow-y-auto bg-card border-t border-border rounded-t-3xl outline-none animate-in slide-in-from-bottom-full pb-[env(safe-area-inset-bottom)]">
+            <div className="mx-auto w-12 h-1.5 bg-muted rounded-full mt-3 mb-2" />
+            <div className="px-5 py-4 max-w-md mx-auto w-full flex flex-col gap-5">
+              <div className="flex items-center justify-between">
+                <div>
+                  <Dialog.Title className="text-xl font-bold">Імпорт особового складу</Dialog.Title>
+                  <Dialog.Description className="text-sm text-muted-foreground mt-1">
+                    Один військовослужбовець на кожному рядку.
+                  </Dialog.Description>
+                </div>
+                <Dialog.Close className="w-8 h-8 flex items-center justify-center rounded-full bg-secondary text-secondary-foreground shrink-0 ml-3">
+                  <X className="w-5 h-5" />
+                </Dialog.Close>
+              </div>
+
+              <div className="space-y-2">
+                <label htmlFor="roster-import" className="text-sm font-medium text-muted-foreground px-1">
+                  Скопійований список
+                </label>
+                <textarea
+                  id="roster-import"
+                  value={importText}
+                  onChange={(event) => setImportText(event.target.value)}
+                  placeholder={"ШЕВЧЕНКО тарас\nПЕТРЕНКО ІВАН ІВАНОВИЧ\nКОВАЛЕНКО а. б."}
+                  rows={9}
+                  autoFocus
+                  className="w-full min-h-52 p-4 bg-background border border-input rounded-xl text-base resize-y focus:outline-none focus:ring-2 focus:ring-ring"
+                />
+                <p className="text-xs text-muted-foreground px-1">
+                  Порожні рядки буде пропущено, зайві пробіли прибрано, регістр імен нормалізовано.
+                </p>
+              </div>
+
+              <div className="flex items-center justify-between px-1 text-sm">
+                <span className="text-muted-foreground">Буде імпортовано</span>
+                <span className="font-semibold">{parsedSoldiers.length}</span>
+              </div>
+
+              <button
+                type="button"
+                onClick={handleImport}
+                disabled={parsedSoldiers.length === 0}
+                className="w-full h-14 bg-primary text-primary-foreground font-bold rounded-xl active-elevate touch-manipulation shadow-sm disabled:opacity-50 disabled:pointer-events-none"
+              >
+                Імпортувати {parsedSoldiers.length > 0 ? `(${parsedSoldiers.length})` : ""}
+              </button>
+            </div>
+          </Dialog.Content>
+        </Dialog.Portal>
+      </Dialog.Root>
     </Layout>
   );
 }
@@ -163,7 +266,6 @@ function SortableRow({
         isDragging && "opacity-50 shadow-lg z-10"
       )}
     >
-      {/* Drag handle */}
       <button
         type="button"
         className="flex items-center justify-center pl-3 pr-1 py-4 text-muted-foreground/50 touch-none cursor-grab active:cursor-grabbing"
@@ -174,7 +276,6 @@ function SortableRow({
         <GripVertical className="w-5 h-5" />
       </button>
 
-      {/* Tap area to edit */}
       <button
         onClick={onEdit}
         className="flex items-center gap-3 flex-1 pr-4 py-3 text-left active-elevate"
@@ -304,4 +405,30 @@ function SoldierForm({
       </div>
     </form>
   );
+}
+
+function parseRosterText(text: string): NewSoldier[] {
+  return text
+    .split(/\r?\n/)
+    .map((line) => line.trim().replace(/\s+/g, " "))
+    .filter(Boolean)
+    .map((line) => {
+      const [lastName, ...otherNames] = line.split(" ").map(normalizeNameToken);
+      return {
+        lastName,
+        firstName: otherNames.length > 0 ? otherNames.join(" ") : undefined,
+      };
+    });
+}
+
+function normalizeNameToken(token: string): string {
+  const lowerCased = token.toLocaleLowerCase("uk-UA");
+
+  if (/^(?:\p{L}\.)+$/u.test(lowerCased)) {
+    return lowerCased.replace(/\p{L}/gu, (letter) => letter.toLocaleUpperCase("uk-UA"));
+  }
+
+  return lowerCased.replace(/(^|[-–—])(\p{L})/gu, (_, separator: string, letter: string) => {
+    return separator + letter.toLocaleUpperCase("uk-UA");
+  });
 }
