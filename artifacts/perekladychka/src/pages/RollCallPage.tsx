@@ -43,12 +43,13 @@ export default function RollCallPage() {
 
   const entries = currentSession.entries;
   const markedIds = new Set(entries.map(e => e.soldierId));
-  
-  const unmarkedSoldiers = [...soldiers].filter(s => !markedIds.has(s.id)).sort((a, b) => a.lastName.localeCompare(b.lastName));
-  const markedSoldiers = entries
-    .map(e => ({ entry: e, soldier: soldiers.find(s => s.id === e.soldierId)! }))
-    .filter(x => x.soldier)
-    .sort((a, b) => new Date(b.entry.timestamp).getTime() - new Date(a.entry.timestamp).getTime());
+  const entriesBySoldierId = new Map(entries.map(entry => [entry.soldierId, entry]));
+
+  const unmarkedSoldiers = soldiers.filter(soldier => !markedIds.has(soldier.id));
+  const markedSoldiers = soldiers.flatMap(soldier => {
+    const entry = entriesBySoldierId.get(soldier.id);
+    return entry ? [{ entry, soldier }] : [];
+  });
 
   const getPreviousStatus = (soldierId: string): { status: StoredStatus, timestamp: string } | null => {
     if (!previousSession) return null;
