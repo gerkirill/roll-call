@@ -80,7 +80,8 @@ export default function SettingsPage() {
 
   const [toast, setToast] = useState<Toast>(null);
   const [shareState, setShareState] = useState<ShareState>({ status: 'preparing' });
-  const [isCopying, setIsCopying] = useState(false);
+  const [isSharingText, setIsSharingText] = useState(false);
+  const [isSharingFile, setIsSharingFile] = useState(false);
   const [manualCopy, setManualCopy] = useState<string | null>(null);
   const [showPaste, setShowPaste] = useState(false);
   const [pasteValue, setPasteValue] = useState('');
@@ -119,7 +120,7 @@ export default function SettingsPage() {
         if (runId !== preparationRunRef.current) return;
         const message = errorText(error);
         setShareState({ status: 'error', message });
-        showToast('error', `Не вдалося підготувати рядок для копіювання. ${message}`);
+        showToast('error', `Не вдалося підготувати текст для надсилання. ${message}`);
       },
     );
   }, [data, showToast]);
@@ -131,49 +132,49 @@ export default function SettingsPage() {
 
   const copyFallback = useCallback((text: string, primaryError?: string) => {
     const result = legacyCopy(text);
-    setIsCopying(false);
+    setIsSharingText(false);
     if (result.ok) {
       setManualCopy(null);
       showToast(
         'success',
         primaryError
-          ? `Скопійовано резервним способом. Clipboard API не спрацював: ${primaryError}`
-          : 'Рядок скопійовано резервним способом.',
+          ? `Системне надсилання недоступне, тому текст скопійовано. ${primaryError}`
+          : 'Текст скопійовано в буфер обміну.',
       );
       return;
     }
 
     setManualCopy(text);
     const details = [
-      primaryError ? `Clipboard API: ${primaryError}` : null,
-      `резервний метод: ${result.message}`,
+      primaryError ? `системне надсилання: ${primaryError}` : null,
+      `резервне копіювання: ${'message' in result ? result.message : 'невідома помилка'}`,
     ].filter(Boolean).join('; ');
-    showToast('error', `Автоматичне копіювання не вдалося (${details}). Рядок показано для ручного копіювання.`);
+    showToast('error', `Не вдалося автоматично передати текст (${details}). Рядок показано для ручного копіювання.`);
   }, [showToast]);
 
-  const handleShare = () => {
+  const handleTextShare = () => {
     if (shareState.status === 'error') {
       showToast('error', `Повторюю підготовку. Попередня помилка: ${shareState.message}`);
       prepareShareString();
       return;
     }
-    if (shareState.status !== 'ready' || isCopying) return;
+    if (shareState.status !== 'ready' || isSharingText) return;
 
     const text = shareState.text;
-    setIsCopying(true);
+    setIsSharingText(true);
 
     if (!window.isSecureContext) {
       copyFallback(text, 'сторінка відкрита без HTTPS');
       return;
     }
-    if (!navigator.clipboard?.writeText) {
-      copyFallback(text, 'Clipboard API недоступний у цьому браузері або WebView');
+    if (typeof navigator.share !== 'function') {
+      copyFallback(text, 'Web Share API недоступний у цьому браузері або WebView');
       return;
     }
 
     let promise: Promise<void>;
     try {
-      promise = navigator.clipboard.writeText(text);
+      promise = navigator.share({ text });
     } catch (error) {
       copyFallback(text, errorText(error));
       return;
@@ -181,29 +182,55 @@ export default function SettingsPage() {
 
     void promise.then(
       () => {
-        setIsCopying(false);
+        setIsSharingText(false);
         setManualCopy(null);
-        showToast('success', 'Рядок скопійовано в буфер обміну.');
+        showToast('success', 'Текст передано через системне меню надсилання.');
       },
-      error => copyFallback(text, errorText(error)),
+      error => {
+        if (error instanceof DOMException && error.name === 'AbortError') {
+          setIsSharingText(false);
+          return;
+        }
+        copyFallback(text, errorText(error));
+      },
     );
   };
 
-  const shareTitle = isCopying
-    ? 'Копіювання…'
+  const handleFileShare = async () => {
+    if (isSharingFile) return;
+    setIsSharingFile(true);
+
+    try {
+      const result = await exportData();
+      if (result.status === 'shared') {
+        showToast('success', 'JSON-файл передано через системне меню надсилання.');
+      } else if (result.status === 'downloaded') {
+        showToast('success', 'Системне надсилання файлів недоступне, тому JSON-файл завантажено.');
+      } else if (result.status === 'error') {
+        showToast('error', `Не вдалося експортувати JSON-файл. ${result.message}`);
+      }
+    } catch (error) {
+      showToast('error', `Не вдалося експортувати JSON-файл. ${errorText(error)}`);
+    } finally {
+      setIsSharingFile(false);
+    }
+  };
+
+  const shareTitle = isSharingText
+    ? 'Відкриття меню…'
     : shareState.status === 'preparing'
       ? 'Підготовка тексту…'
       : shareState.status === 'error'
         ? 'Повторити підготовку'
-        : 'Скопіювати у вигляді тексту';
+        : 'Поділитися текстом';
 
   const shareSubtitle = shareState.status === 'preparing'
     ? 'Готуємо текст для надсилання в месенджері'
     : shareState.status === 'error'
       ? <>Не вдалося підготувати рядок. Натисніть, щоб повторити.<br /><span className='text-xs text-destructive'>{shareState.message}</span></>
-      : isCopying
-        ? 'Браузер виконує запит на копіювання'
-        : `Для надсилання в месенджері · ${shareState.text.length.toLocaleString('uk-UA')} символів`;
+      : isSharingText
+        ? 'Браузер відкриває системне меню надсилання'
+        : `Надіслати через системне меню · ${shareState.text.length.toLocaleString('uk-UA')} символів`;
 
   const formatMergeResult = (result: { soldiersAdded: number; soldiersUpdated: number; sessionsAdded: number }) => {
     const parts: string[] = [];
@@ -261,7 +288,13 @@ export default function SettingsPage() {
         <section className='flex flex-col gap-3'>
           <h2 className='text-sm font-bold text-muted-foreground uppercase tracking-wider px-1'>Резервне копіювання</h2>
           <div className='bg-card border border-border rounded-2xl overflow-hidden shadow-sm'>
-            <SettingsRow icon={<Download className='w-5 h-5' />} title='Експортувати у файл' subtitle='Зберегти військовослужбовців і переклички у файл' onClick={exportData} />
+            <SettingsRow
+              icon={<Download className='w-5 h-5' />}
+              title={isSharingFile ? 'Підготовка файлу…' : 'Поділитися файлом'}
+              subtitle={isSharingFile ? 'Браузер готує JSON-файл' : 'Надіслати резервну копію у форматі JSON'}
+              onClick={() => { void handleFileShare(); }}
+              disabled={isSharingFile}
+            />
 
             <input type='file' accept='.json' ref={fileInputRef} onChange={handleFileChange} className='hidden' />
             <SettingsRow icon={<Upload className='w-5 h-5' />} title='Імпортувати з файлу' subtitle='Додати дані з резервної копії до наявних' onClick={() => fileInputRef.current?.click()} />
@@ -271,18 +304,18 @@ export default function SettingsPage() {
                 icon={<Share2 className='w-5 h-5' />}
                 title={shareTitle}
                 subtitle={shareSubtitle}
-                onClick={handleShare}
-                disabled={shareState.status === 'preparing' || isCopying}
+                onClick={handleTextShare}
+                disabled={shareState.status === 'preparing' || isSharingText}
               />
             ) : (
               <div className='p-4 flex flex-col gap-3 border-b border-border'>
                 <div className='flex items-center justify-between gap-3'>
-                  <span className='text-sm font-semibold text-destructive'>Автоматичне копіювання не вдалося</span>
+                  <span className='text-sm font-semibold text-destructive'>Автоматичне надсилання і копіювання не вдалося</span>
                   <button type='button' onClick={() => setManualCopy(null)} aria-label='Закрити ручне копіювання' className='w-7 h-7 flex items-center justify-center rounded-full bg-secondary'><X className='w-4 h-4' /></button>
                 </div>
                 <textarea autoFocus readOnly value={manualCopy} rows={3} onFocus={event => event.target.select()} className='w-full px-3 py-2 text-xs font-mono bg-background border border-input rounded-xl resize-none focus:outline-none focus:ring-2 focus:ring-ring' />
                 <p className='text-xs text-muted-foreground'>Натисніть на поле, виділіть весь текст і скористайтеся системною командою «Копіювати».</p>
-                <button type='button' onClick={handleShare} disabled={isCopying} className='h-11 bg-secondary font-semibold rounded-xl active-elevate disabled:opacity-50'>{isCopying ? 'Повторна спроба…' : 'Спробувати автоматично ще раз'}</button>
+                <button type='button' onClick={handleTextShare} disabled={isSharingText} className='h-11 bg-secondary font-semibold rounded-xl active-elevate disabled:opacity-50'>{isSharingText ? 'Повторна спроба…' : 'Спробувати ще раз'}</button>
               </div>
             )}
 
