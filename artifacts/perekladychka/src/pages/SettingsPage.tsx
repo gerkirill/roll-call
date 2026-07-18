@@ -281,7 +281,7 @@ export default function SettingsPage() {
           <h2 className='text-sm font-bold text-muted-foreground uppercase tracking-wider px-1'>Про додаток</h2>
           <div className='bg-card border border-border rounded-2xl p-4 shadow-sm flex items-start gap-4'>
             <div className='w-12 h-12 rounded-2xl bg-primary flex items-center justify-center shrink-0'><Info className='w-6 h-6 text-primary-foreground' /></div>
-            <div><div className='font-bold text-lg mb-1'>Перекличка</div><div className='text-sm text-muted-foreground mb-3'>Версія 1.0.1</div><p className='text-sm leading-relaxed'>Швидкий інструмент для ведення переклички. Всі дані зберігаються виключно на вашому пристрої.</p></div>
+            <div><div className='font-bold text-lg mb-1'>Перекличка</div><div className='text-sm text-muted-foreground mb-3'>Версія 1.0.2</div><p className='text-sm leading-relaxed'>Швидкий інструмент для ведення переклички. Всі дані зберігаються виключно на вашому пристрої.</p></div>
           </div>
         </section>
 
