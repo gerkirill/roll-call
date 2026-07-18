@@ -1,7 +1,6 @@
 import { useCallback } from 'react';
 import { useAppData } from './useAppData';
 import type { AppData, Soldier, RollCallSession } from '../types';
-import { normalizeAppData } from '../utils/appData';
 import { decodeShareString } from '../utils/share';
 
 export type ImportResult =
@@ -26,7 +25,7 @@ function createExportFile(data: AppData): File {
   const d = new Date();
   const dateStr = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
   return new File(
-    [JSON.stringify(normalizeAppData(data), null, 2)],
+    [JSON.stringify(data, null, 2)],
     `perekladychka-${dateStr}.json`,
     { type: 'application/json' },
   );
@@ -99,11 +98,10 @@ function applyMerge(
   let soldiersAdded = 0;
   let soldiersUpdated = 0;
   let sessionsAdded = 0;
-  const normalizedIncoming = normalizeAppData(incoming);
 
   setData(prev => {
-    const soldierResult = mergeSoldiers(prev.soldiers, normalizedIncoming.soldiers);
-    const sessionResult = mergeSessions(prev.sessions, normalizedIncoming.sessions);
+    const soldierResult = mergeSoldiers(prev.soldiers, incoming.soldiers);
+    const sessionResult = mergeSessions(prev.sessions, incoming.sessions);
     soldiersAdded = soldierResult.added;
     soldiersUpdated = soldierResult.updated;
     sessionsAdded = sessionResult.added;
