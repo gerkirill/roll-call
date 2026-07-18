@@ -1,6 +1,10 @@
 import type { AppData } from '../types';
+import { decodeBase32768, encodeBase32768 } from './base32768';
 
-const PREFIX = 'pk1:';
+const BASE64_PREFIX = 'pk1:';
+const BASE32768_PREFIX = 'pk2:';
+
+export type TextExportFormat = 'base64' | 'base32768';
 
 // ── Binary ↔ Base64URL ──────────────────────────────────────────────────────
 
@@ -58,18 +62,31 @@ async function gzipDecompress(input: Uint8Array): Promise<Uint8Array> {
 
 // ── Public API ───────────────────────────────────────────────────────────────
 
-export async function encodeShareString(data: AppData): Promise<string> {
+export async function encodeShareString(
+  data: AppData,
+  format: TextExportFormat = 'base64',
+): Promise<string> {
   const bytes = new TextEncoder().encode(JSON.stringify(data));
   const compressed = await gzipCompress(bytes);
-  return PREFIX + uint8ToBase64url(compressed);
+  return format === 'base32768'
+    ? BASE32768_PREFIX + encodeBase32768(compressed)
+    : BASE64_PREFIX + uint8ToBase64url(compressed);
 }
 
 /** Returns parsed AppData or null if the string is invalid / unrecognised. */
 export async function decodeShareString(s: string): Promise<AppData | null> {
   try {
     const trimmed = s.trim();
-    if (!trimmed.startsWith(PREFIX)) return null;
-    const compressed = base64urlToUint8(trimmed.slice(PREFIX.length));
+    let compressed: Uint8Array;
+
+    if (trimmed.startsWith(BASE64_PREFIX)) {
+      compressed = base64urlToUint8(trimmed.slice(BASE64_PREFIX.length));
+    } else if (trimmed.startsWith(BASE32768_PREFIX)) {
+      compressed = decodeBase32768(trimmed.slice(BASE32768_PREFIX.length));
+    } else {
+      return null;
+    }
+
     const decompressed = await gzipDecompress(compressed);
     const parsed = JSON.parse(new TextDecoder().decode(decompressed)) as Partial<AppData>;
     if (!Array.isArray(parsed?.soldiers) || !Array.isArray(parsed?.sessions)) return null;
