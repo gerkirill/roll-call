@@ -7,6 +7,41 @@ export type ImportResult =
   | { status: 'invalid' }
   | { status: 'ok'; soldiersAdded: number; soldiersUpdated: number; sessionsAdded: number };
 
+export type ExportResult =
+  | { status: 'shared' }
+  | { status: 'downloaded' }
+  | { status: 'cancelled' }
+  | { status: 'error'; message: string };
+
+function errorText(error: unknown): string {
+  if (error instanceof DOMException || error instanceof Error) {
+    return error.message ? `${error.name}: ${error.message}` : error.name;
+  }
+  if (typeof error === 'string' && error.trim()) return error;
+  return 'невідома помилка';
+}
+
+function createExportFile(data: AppData): File {
+  const d = new Date();
+  const dateStr = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+  return new File(
+    [JSON.stringify(data, null, 2)],
+    `perekladychka-${dateStr}.json`,
+    { type: 'application/json' },
+  );
+}
+
+function downloadFile(file: File): void {
+  const url = URL.createObjectURL(file);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = file.name;
+  document.body.appendChild(a);
+  a.click();
+  document.body.removeChild(a);
+  URL.revokeObjectURL(url);
+}
+
 function mergeSoldiers(
   local: Soldier[],
   incoming: Soldier[]
@@ -80,21 +115,35 @@ export function useImportExport() {
   const { data, setData } = useAppData();
 
   // ── File export ────────────────────────────────────────────────────────────
-  const exportData = useCallback(() => {
-    const json = JSON.stringify(data, null, 2);
-    const blob = new Blob([json], { type: 'application/json' });
-    const url = URL.createObjectURL(blob);
+  const exportData = useCallback(async (): Promise<ExportResult> => {
+    const file = createExportFile(data);
+    const shareData: ShareData = { files: [file] };
 
-    const a = document.createElement('a');
-    a.href = url;
+    if (
+      window.isSecureContext &&
+      typeof navigator.share === 'function' &&
+      typeof navigator.canShare === 'function' &&
+      navigator.canShare(shareData)
+    ) {
+      try {
+        await navigator.share(shareData);
+        return { status: 'shared' };
+      } catch (error) {
+        if (error instanceof DOMException && error.name === 'AbortError') {
+          return { status: 'cancelled' };
+        }
+        console.error('File share failed', error);
+        return { status: 'error', message: errorText(error) };
+      }
+    }
 
-    const d = new Date();
-    const dateStr = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
-    a.download = `perekladychka-${dateStr}.json`;
-    document.body.appendChild(a);
-    a.click();
-    document.body.removeChild(a);
-    URL.revokeObjectURL(url);
+    try {
+      downloadFile(file);
+      return { status: 'downloaded' };
+    } catch (error) {
+      console.error('File export failed', error);
+      return { status: 'error', message: errorText(error) };
+    }
   }, [data]);
 
   // ── File import ────────────────────────────────────────────────────────────
