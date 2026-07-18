@@ -372,7 +372,7 @@ function SoldierForm({
                     <span
                       key={i}
                       aria-hidden="true"
-                      className="min-w-7 h-10 px-0.5 text-lg font-bold flex items-center justify-center text-muted-foreground/55"
+                      className="min-w-7 h-10 px-0.5 text-lg font-bold flex items-center justify-center text-foreground/80"
                     >
                       {char}
                     </span>
