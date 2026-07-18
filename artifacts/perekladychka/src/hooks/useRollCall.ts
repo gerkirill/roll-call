@@ -35,6 +35,13 @@ export function useRollCall() {
     }));
   }, [setData]);
 
+  const cancelSession = useCallback((id: string) => {
+    setData(prev => ({
+      ...prev,
+      sessions: prev.sessions.filter(s => s.id !== id || !!s.completedAt)
+    }));
+  }, [setData]);
+
   const setEntry = useCallback((sessionId: string, soldierId: string, status: StoredStatus) => {
     setData(prev => ({
       ...prev,
@@ -88,6 +95,7 @@ export function useRollCall() {
     previousSession,
     startSession,
     completeSession,
+    cancelSession,
     setEntry,
     undoLastEntry,
     removeEntry
