@@ -40,14 +40,18 @@ export function useRollCall() {
       ...prev,
       sessions: prev.sessions.map(s => {
         if (s.id !== sessionId) return s;
-        const now = new Date().toISOString();
+
+        const startedAt = Date.parse(s.startedAt);
+        const timestamp = Number.isFinite(startedAt)
+          ? Math.max(0, Math.floor((Date.now() - startedAt) / 1000))
+          : 0;
         const existingIdx = s.entries.findIndex(e => e.soldierId === soldierId);
         
         const newEntries = [...s.entries];
         if (existingIdx >= 0) {
-          newEntries[existingIdx] = { soldierId, status, timestamp: now };
+          newEntries[existingIdx] = { soldierId, status, timestamp };
         } else {
-          newEntries.push({ soldierId, status, timestamp: now });
+          newEntries.push({ soldierId, status, timestamp });
         }
         
         return { ...s, entries: newEntries };
