@@ -58,6 +58,16 @@ export function useRollCall() {
       })
     }));
   }, [setData]);
+
+  const undoLastEntry = useCallback((sessionId: string) => {
+    setData(prev => ({
+      ...prev,
+      sessions: prev.sessions.map(s => {
+        if (s.id !== sessionId || s.completedAt || s.entries.length === 0) return s;
+        return { ...s, entries: s.entries.slice(0, -1) };
+      })
+    }));
+  }, [setData]);
   
   const removeEntry = useCallback((sessionId: string, soldierId: string) => {
     setData(prev => ({
@@ -79,6 +89,7 @@ export function useRollCall() {
     startSession,
     completeSession,
     setEntry,
+    undoLastEntry,
     removeEntry
   };
 }

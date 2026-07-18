@@ -2,7 +2,7 @@ import { useRoute, useLocation } from "wouter";
 import { format, isToday, isYesterday, parseISO } from "date-fns";
 import { uk } from "date-fns/locale";
 import { motion, AnimatePresence } from "framer-motion";
-import { Check, ChevronLeft, Calendar } from "lucide-react";
+import { Check, ChevronLeft, Calendar, Undo2 } from "lucide-react";
 import { useRoster } from "@/hooks/useRoster";
 import { useRollCall } from "@/hooks/useRollCall";
 import { STATUS_EMOJI, STATUS_LABELS, Status, StoredStatus } from "@/types";
@@ -22,7 +22,7 @@ export default function RollCallPage() {
   const [, params] = useRoute("/roll-call/:id");
   const [, setLocation] = useLocation();
   const { soldiers } = useRoster();
-  const { sessions, previousSession, completeSession, setEntry, removeEntry } = useRollCall();
+  const { sessions, previousSession, completeSession, setEntry, undoLastEntry, removeEntry } = useRollCall();
 
   const sessionId = params?.id;
   const currentSession = sessions.find(s => s.id === sessionId);
@@ -46,6 +46,13 @@ export default function RollCallPage() {
   const entries = currentSession.entries;
   const markedIds = new Set(entries.map(e => e.soldierId));
   const entriesBySoldierId = new Map(entries.map(entry => [entry.soldierId, entry]));
+  const lastEntry = entries[entries.length - 1] ?? null;
+  const lastMarkedSoldier = lastEntry
+    ? soldiers.find(soldier => soldier.id === lastEntry.soldierId) ?? null
+    : null;
+  const lastMarkedSoldierName = lastMarkedSoldier
+    ? [lastMarkedSoldier.lastName, lastMarkedSoldier.firstName].filter(Boolean).join(" ")
+    : null;
 
   // Обидві секції наслідують порядок особового складу, включно з імпортом і ручним сортуванням.
   const unmarkedSoldiers = soldiers.filter(soldier => !markedIds.has(soldier.id));
@@ -73,6 +80,12 @@ export default function RollCallPage() {
     }
 
     setEntry(currentSession.id, soldierId, resolvedStatus);
+  };
+
+  const handleUndoLast = () => {
+    if (!lastEntry) return;
+    navigator.vibrate?.(20);
+    undoLastEntry(currentSession.id);
   };
 
   const countStatuses = (sessionEntries: typeof entries) => {
@@ -143,6 +156,22 @@ export default function RollCallPage() {
               {Object.keys(currCounts).length === 0 && <span className="text-muted-foreground">—</span>}
             </div>
           </div>
+          <button
+            type="button"
+            onClick={handleUndoLast}
+            disabled={!lastEntry}
+            aria-label={lastMarkedSoldierName
+              ? `Скасувати останню відмітку: ${lastMarkedSoldierName}`
+              : "Немає відміток для скасування"}
+            className="mt-2 w-full h-11 px-3 flex items-center justify-center gap-2 rounded-xl border border-border bg-card text-foreground font-semibold active-elevate touch-manipulation disabled:opacity-45 disabled:pointer-events-none"
+          >
+            <Undo2 className="w-4 h-4 shrink-0" />
+            <span className="truncate">
+              {lastMarkedSoldierName
+                ? `Скасувати: ${lastMarkedSoldierName}`
+                : "Немає відміток для скасування"}
+            </span>
+          </button>
         </div>
       </div>
 
