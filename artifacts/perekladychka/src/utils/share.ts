@@ -1,4 +1,5 @@
 import type { AppData } from '../types';
+import { normalizeAppData } from './appData';
 
 const PREFIX = 'pk1:';
 
@@ -59,7 +60,7 @@ async function gzipDecompress(input: Uint8Array): Promise<Uint8Array> {
 // ── Public API ───────────────────────────────────────────────────────────────
 
 export async function encodeShareString(data: AppData): Promise<string> {
-  const bytes = new TextEncoder().encode(JSON.stringify(data));
+  const bytes = new TextEncoder().encode(JSON.stringify(normalizeAppData(data)));
   const compressed = await gzipCompress(bytes);
   return PREFIX + uint8ToBase64url(compressed);
 }
@@ -73,7 +74,7 @@ export async function decodeShareString(s: string): Promise<AppData | null> {
     const decompressed = await gzipDecompress(compressed);
     const parsed = JSON.parse(new TextDecoder().decode(decompressed)) as Partial<AppData>;
     if (!Array.isArray(parsed?.soldiers) || !Array.isArray(parsed?.sessions)) return null;
-    return parsed as AppData;
+    return normalizeAppData(parsed as AppData);
   } catch {
     return null;
   }
