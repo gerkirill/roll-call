@@ -25,6 +25,12 @@ import { cn } from "@/lib/utils";
 
 type NewSoldier = Omit<Soldier, "id" | "updatedAt">;
 
+const VOWEL_PATTERN = /^[аеєиіїоуюяёыэaeiou]$/iu;
+
+function isVowel(char: string): boolean {
+  return VOWEL_PATTERN.test(char);
+}
+
 export default function RosterPage() {
   const {
     soldiers,
@@ -343,29 +349,46 @@ function SoldierForm({
         {chars.length > 0 && (
           <div className="bg-secondary/30 rounded-xl p-3 border border-border">
             <div className="text-xs text-muted-foreground mb-2 px-1">Наголос:</div>
-            <div className="flex flex-wrap gap-2">
-              {chars.map((char, i) => (
+            <div className="flex items-center gap-3">
+              <div className="flex flex-wrap items-center gap-0.5 flex-1 min-w-0">
+                {chars.map((char, i) =>
+                  isVowel(char) ? (
+                    <button
+                      key={i}
+                      type="button"
+                      onClick={() => setLastName(setAccent(lastName, i))}
+                      aria-label={`Поставити наголос на літері ${char}`}
+                      aria-pressed={accentIdx === i}
+                      className={cn(
+                        "min-w-9 h-10 px-1 rounded-lg text-lg font-bold flex items-center justify-center transition-colors border touch-manipulation",
+                        accentIdx === i
+                          ? "bg-accent text-accent-foreground border-accent"
+                          : "bg-background border-border text-foreground active-elevate"
+                      )}
+                    >
+                      {char}
+                    </button>
+                  ) : (
+                    <span
+                      key={i}
+                      aria-hidden="true"
+                      className="min-w-7 h-10 px-0.5 text-lg font-bold flex items-center justify-center text-foreground/80"
+                    >
+                      {char}
+                    </span>
+                  )
+                )}
+              </div>
+              {accentIdx >= 0 && (
                 <button
-                  key={i}
                   type="button"
-                  onClick={() => setLastName(setAccent(lastName, i))}
-                  className={cn(
-                    "w-10 h-10 rounded-lg text-lg font-bold flex items-center justify-center transition-colors border",
-                    accentIdx === i
-                      ? "bg-accent text-accent-foreground border-accent"
-                      : "bg-background border-border text-foreground hover:bg-secondary"
-                  )}
+                  onClick={() => setLastName(removeAccent(lastName))}
+                  aria-label="Скинути наголос"
+                  className="w-10 h-10 shrink-0 rounded-lg flex items-center justify-center transition-colors border bg-background border-border text-muted-foreground active-elevate"
                 >
-                  {char}
+                  <X className="w-4 h-4" />
                 </button>
-              ))}
-              <button
-                type="button"
-                onClick={() => setLastName(removeAccent(lastName))}
-                className="w-auto px-3 h-10 rounded-lg text-sm font-medium flex items-center justify-center transition-colors border bg-background border-border text-foreground hover:bg-secondary ml-auto"
-              >
-                ✕ скинути
-              </button>
+              )}
             </div>
           </div>
         )}
