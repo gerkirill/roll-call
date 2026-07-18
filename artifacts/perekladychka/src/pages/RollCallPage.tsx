@@ -2,7 +2,8 @@ import { useRoute, useLocation } from "wouter";
 import { format, isToday, isYesterday, parseISO } from "date-fns";
 import { uk } from "date-fns/locale";
 import { motion, AnimatePresence } from "framer-motion";
-import { Check, ChevronLeft, Calendar, Undo2 } from "lucide-react";
+import * as AlertDialog from "@radix-ui/react-alert-dialog";
+import { Check, ChevronLeft, Calendar, Trash2, Undo2 } from "lucide-react";
 import { useRoster } from "@/hooks/useRoster";
 import { useRollCall } from "@/hooks/useRollCall";
 import { STATUS_EMOJI, STATUS_LABELS, Status, StoredStatus } from "@/types";
@@ -22,7 +23,7 @@ export default function RollCallPage() {
   const [, params] = useRoute("/roll-call/:id");
   const [, setLocation] = useLocation();
   const { soldiers } = useRoster();
-  const { sessions, previousSession, completeSession, setEntry, undoLastEntry, removeEntry } = useRollCall();
+  const { sessions, previousSession, completeSession, cancelSession, setEntry, undoLastEntry, removeEntry } = useRollCall();
 
   const sessionId = params?.id;
   const currentSession = sessions.find(s => s.id === sessionId);
@@ -41,6 +42,11 @@ export default function RollCallPage() {
       completeSession(currentSession.id);
       setLocation("/");
     }
+  };
+
+  const handleCancel = () => {
+    cancelSession(currentSession.id);
+    setLocation("/");
   };
 
   const entries = currentSession.entries;
@@ -312,6 +318,42 @@ export default function RollCallPage() {
             </div>
           </div>
         )}
+
+        <div className="pt-2">
+          <AlertDialog.Root>
+            <AlertDialog.Trigger asChild>
+              <button
+                type="button"
+                className="w-full h-12 px-4 flex items-center justify-center gap-2 rounded-xl border border-destructive/40 bg-destructive/5 text-destructive font-semibold active-elevate touch-manipulation"
+              >
+                <Trash2 className="w-4 h-4" />
+                Скасувати поточну перекличку
+              </button>
+            </AlertDialog.Trigger>
+            <AlertDialog.Portal>
+              <AlertDialog.Overlay className="fixed inset-0 z-50 bg-black/50 backdrop-blur-[1px]" />
+              <AlertDialog.Content className="fixed left-4 right-4 top-1/2 z-50 -translate-y-1/2 rounded-2xl border border-border bg-card p-5 shadow-xl sm:left-1/2 sm:right-auto sm:w-full sm:max-w-md sm:-translate-x-1/2">
+                <AlertDialog.Title className="text-xl font-bold text-foreground">
+                  Скасувати перекличку?
+                </AlertDialog.Title>
+                <AlertDialog.Description className="mt-2 text-sm leading-relaxed text-muted-foreground">
+                  Поточна перекличка та всі зроблені відмітки ({entries.length}) будуть видалені. В історії вона не збережеться. Цю дію неможливо скасувати.
+                </AlertDialog.Description>
+                <div className="mt-5 flex flex-col-reverse gap-3 sm:flex-row sm:justify-end">
+                  <AlertDialog.Cancel className="h-12 rounded-xl border border-border px-4 font-semibold active-elevate">
+                    Продовжити перекличку
+                  </AlertDialog.Cancel>
+                  <AlertDialog.Action
+                    onClick={handleCancel}
+                    className="h-12 rounded-xl bg-destructive px-4 font-semibold text-destructive-foreground active-elevate"
+                  >
+                    Так, видалити перекличку
+                  </AlertDialog.Action>
+                </div>
+              </AlertDialog.Content>
+            </AlertDialog.Portal>
+          </AlertDialog.Root>
+        </div>
       </div>
     </div>
   );
