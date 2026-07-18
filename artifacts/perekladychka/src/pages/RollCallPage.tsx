@@ -129,32 +129,28 @@ export default function RollCallPage() {
 
       {/* Statistics panel */}
       <div className="sticky top-14 z-30 bg-background/95 backdrop-blur border-b border-border px-4 py-3 text-sm shadow-xs">
-        <div className="flex flex-col gap-1.5">
-          <div className="flex items-center">
-            <span className="w-20 text-muted-foreground font-medium text-xs uppercase tracking-wider">Попередня:</span>
-            {prevCounts ? (
-              <div className="flex gap-3 flex-wrap">
-                {statusesOrder.map(s => prevCounts[s] ? (
-                  <span key={s} className="flex items-center gap-1 opacity-70">
-                    {STATUS_EMOJI[s]} <span className="font-medium">{prevCounts[s]}</span>
-                  </span>
-                ) : null)}
-                {Object.keys(prevCounts).length === 0 && <span className="text-muted-foreground">—</span>}
-              </div>
-            ) : (
-              <span className="text-muted-foreground">—</span>
-            )}
-          </div>
-          <div className="flex items-center">
-            <span className="w-20 text-muted-foreground font-medium text-xs uppercase tracking-wider">Поточна:</span>
-            <div className="flex gap-3 flex-wrap">
-              {statusesOrder.map(s => currCounts[s] ? (
-                <span key={s} className="flex items-center gap-1">
-                  {STATUS_EMOJI[s]} <span className="font-bold">{currCounts[s]}</span>
+        <div className="grid grid-cols-[max-content_minmax(0,1fr)] items-center gap-x-3 gap-y-1.5">
+          <span className="text-muted-foreground font-medium text-xs uppercase tracking-wider">Попередня:</span>
+          {prevCounts ? (
+            <div className="min-w-0 flex flex-wrap gap-x-3 gap-y-1">
+              {statusesOrder.map(s => prevCounts[s] ? (
+                <span key={s} className="flex items-center gap-1 opacity-70">
+                  {STATUS_EMOJI[s]} <span className="font-medium">{prevCounts[s]}</span>
                 </span>
               ) : null)}
-              {Object.keys(currCounts).length === 0 && <span className="text-muted-foreground">—</span>}
+              {Object.keys(prevCounts).length === 0 && <span className="text-muted-foreground">—</span>}
             </div>
+          ) : (
+            <span className="text-muted-foreground">—</span>
+          )}
+          <span className="text-muted-foreground font-medium text-xs uppercase tracking-wider">Поточна:</span>
+          <div className="min-w-0 flex flex-wrap gap-x-3 gap-y-1">
+            {statusesOrder.map(s => currCounts[s] ? (
+              <span key={s} className="flex items-center gap-1">
+                {STATUS_EMOJI[s]} <span className="font-bold">{currCounts[s]}</span>
+              </span>
+            ) : null)}
+            {Object.keys(currCounts).length === 0 && <span className="text-muted-foreground">—</span>}
           </div>
           <button
             type="button"
@@ -163,7 +159,7 @@ export default function RollCallPage() {
             aria-label={lastMarkedSoldierName
               ? `Скасувати останню відмітку: ${lastMarkedSoldierName}`
               : "Немає відміток для скасування"}
-            className="mt-2 w-full h-11 px-3 flex items-center justify-center gap-2 rounded-xl border border-border bg-card text-foreground font-semibold active-elevate touch-manipulation disabled:opacity-45 disabled:pointer-events-none"
+            className="col-span-2 mt-2 w-full h-11 px-3 flex items-center justify-center gap-2 rounded-xl border border-border bg-card text-foreground font-semibold active-elevate touch-manipulation disabled:opacity-45 disabled:pointer-events-none"
           >
             <Undo2 className="w-4 h-4 shrink-0" />
             <span className="truncate">
