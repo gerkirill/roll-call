@@ -1,9 +1,11 @@
 import { useCallback, useEffect, useRef, useState, type ReactNode } from 'react';
-import { Download, Upload, Share2, ClipboardPaste, Trash2, Info, X } from 'lucide-react';
+import { Binary, Download, Upload, Share2, ClipboardPaste, Trash2, Info, X } from 'lucide-react';
 import { Layout } from '@/components/Layout';
 import { useImportExport } from '@/hooks/useImportExport';
 import { useAppData } from '@/hooks/useAppData';
-import { encodeShareString } from '@/utils/share';
+import { encodeShareString, type TextExportFormat } from '@/utils/share';
+
+const TEXT_EXPORT_FORMAT_STORAGE_KEY = 'perekladychka-text-export-format';
 
 type Toast = { kind: 'success' | 'error'; message: string } | null;
 type ShareState =
@@ -19,6 +21,17 @@ function errorText(error: unknown): string {
   }
   if (typeof error === 'string' && error.trim()) return error;
   return 'невідома помилка';
+}
+
+function getStoredTextExportFormat(): TextExportFormat {
+  if (typeof window === 'undefined') return 'base64';
+  try {
+    return window.localStorage.getItem(TEXT_EXPORT_FORMAT_STORAGE_KEY) === 'base32768'
+      ? 'base32768'
+      : 'base64';
+  } catch {
+    return 'base64';
+  }
 }
 
 function legacyCopy(text: string): CopyResult {
@@ -87,6 +100,7 @@ export default function SettingsPage() {
   const [pasteValue, setPasteValue] = useState('');
   const [pasteError, setPasteError] = useState('');
   const [confirmClear, setConfirmClear] = useState(false);
+  const [textExportFormat, setTextExportFormat] = useState<TextExportFormat>(getStoredTextExportFormat);
 
   const dismissToast = useCallback(() => {
     if (toastTimerRef.current !== null) window.clearTimeout(toastTimerRef.current);
@@ -107,12 +121,21 @@ export default function SettingsPage() {
     if (toastTimerRef.current !== null) window.clearTimeout(toastTimerRef.current);
   }, []);
 
+  const changeTextExportFormat = useCallback((format: TextExportFormat) => {
+    setTextExportFormat(format);
+    try {
+      window.localStorage.setItem(TEXT_EXPORT_FORMAT_STORAGE_KEY, format);
+    } catch (error) {
+      showToast('error', `Формат змінено, але не вдалося зберегти налаштування. ${errorText(error)}`);
+    }
+  }, [showToast]);
+
   const prepareShareString = useCallback(() => {
     const runId = ++preparationRunRef.current;
     setManualCopy(null);
     setShareState({ status: 'preparing' });
 
-    void encodeShareString(data).then(
+    void encodeShareString(data, textExportFormat).then(
       text => {
         if (runId === preparationRunRef.current) setShareState({ status: 'ready', text });
       },
@@ -123,7 +146,7 @@ export default function SettingsPage() {
         showToast('error', `Не вдалося підготувати текст для надсилання. ${message}`);
       },
     );
-  }, [data, showToast]);
+  }, [data, showToast, textExportFormat]);
 
   useEffect(() => {
     prepareShareString();
@@ -216,6 +239,8 @@ export default function SettingsPage() {
     }
   };
 
+  const textExportFormatLabel = textExportFormat === 'base32768' ? 'Base32768' : 'Base64';
+
   const shareTitle = isSharingText
     ? 'Відкриття меню…'
     : shareState.status === 'preparing'
@@ -225,12 +250,12 @@ export default function SettingsPage() {
         : 'Поділитися текстом';
 
   const shareSubtitle = shareState.status === 'preparing'
-    ? 'Готуємо текст для надсилання в месенджері'
+    ? `Готуємо текст у форматі ${textExportFormatLabel}`
     : shareState.status === 'error'
       ? <>Не вдалося підготувати рядок. Натисніть, щоб повторити.<br /><span className='text-xs text-destructive'>{shareState.message}</span></>
       : isSharingText
         ? 'Браузер відкриває системне меню надсилання'
-        : `Надіслати через системне меню · ${shareState.text.length.toLocaleString('uk-UA')} символів`;
+        : `Надіслати через системне меню · ${textExportFormatLabel} · ${shareState.text.length.toLocaleString('uk-UA')} символів`;
 
   const formatMergeResult = (result: { soldiersAdded: number; soldiersUpdated: number; sessionsAdded: number }) => {
     const parts: string[] = [];
@@ -257,7 +282,7 @@ export default function SettingsPage() {
     setPasteError('');
     const result = await importFromString(pasteValue);
     if (result.status !== 'ok') {
-      setPasteError('Не вдалося розпізнати рядок. Перевірте, чи він починається з «pk1:».');
+      setPasteError('Не вдалося розпізнати рядок. Перевірте, чи він починається з «pk1:» або «pk2:».');
       return;
     }
     showToast('success', `Імпорт завершено: ${formatMergeResult(result)}.`);
@@ -281,7 +306,7 @@ export default function SettingsPage() {
           <h2 className='text-sm font-bold text-muted-foreground uppercase tracking-wider px-1'>Про додаток</h2>
           <div className='bg-card border border-border rounded-2xl p-4 shadow-sm flex items-start gap-4'>
             <div className='w-12 h-12 rounded-2xl bg-primary flex items-center justify-center shrink-0'><Info className='w-6 h-6 text-primary-foreground' /></div>
-            <div><div className='font-bold text-lg mb-1'>Перекличка</div><div className='text-sm text-muted-foreground mb-3'>Версія 1.0.3</div><p className='text-sm leading-relaxed'>Швидкий інструмент для ведення переклички. Всі дані зберігаються виключно на вашому пристрої.</p></div>
+            <div><div className='font-bold text-lg mb-1'>Перекличка</div><div className='text-sm text-muted-foreground mb-3'>Версія 1.0.4</div><p className='text-sm leading-relaxed'>Швидкий інструмент для ведення переклички. Всі дані зберігаються виключно на вашому пристрої.</p></div>
           </div>
         </section>
 
@@ -324,10 +349,10 @@ export default function SettingsPage() {
             ) : (
               <div className='p-4 flex flex-col gap-3'>
                 <div className='flex items-center justify-between'>
-                  <span className='text-sm font-semibold'>Вставте рядок pk1:…</span>
+                  <span className='text-sm font-semibold'>Вставте рядок pk1:… або pk2:…</span>
                   <button type='button' onClick={() => { setShowPaste(false); setPasteValue(''); setPasteError(''); }} className='w-7 h-7 flex items-center justify-center rounded-full bg-secondary'><X className='w-4 h-4' /></button>
                 </div>
-                <textarea autoFocus value={pasteValue} onChange={event => { setPasteValue(event.target.value); setPasteError(''); }} placeholder='pk1:H4sI…' rows={3} className='w-full px-3 py-2 text-xs font-mono bg-background border border-input rounded-xl resize-none focus:outline-none focus:ring-2 focus:ring-ring' />
+                <textarea autoFocus value={pasteValue} onChange={event => { setPasteValue(event.target.value); setPasteError(''); }} placeholder='pk1:H4sI… або pk2:媒腻…' rows={3} className='w-full px-3 py-2 text-xs font-mono bg-background border border-input rounded-xl resize-none focus:outline-none focus:ring-2 focus:ring-ring' />
                 {pasteError && <p className='text-xs text-destructive'>{pasteError}</p>}
                 <button type='button' onClick={handlePasteMerge} disabled={!pasteValue.trim()} className='h-11 bg-primary text-primary-foreground font-semibold rounded-xl active-elevate disabled:opacity-50'>Об’єднати</button>
               </div>
@@ -349,6 +374,36 @@ export default function SettingsPage() {
                 </div>
               </div>
             )}
+          </div>
+        </section>
+
+        <section className='flex flex-col gap-3'>
+          <h2 className='text-sm font-bold text-muted-foreground uppercase tracking-wider px-1'>Текстовий експорт</h2>
+          <div className='bg-card border border-border rounded-2xl p-4 shadow-sm'>
+            <div className='flex items-start gap-3'>
+              <div className='w-10 h-10 rounded-full bg-primary/10 text-primary flex items-center justify-center shrink-0'><Binary className='w-5 h-5' /></div>
+              <div>
+                <div className='font-semibold'>Формат кодування</div>
+                <p className='text-sm text-muted-foreground mt-0.5'>Впливає лише на новий текстовий експорт. Імпорт автоматично розпізнає обидва формати.</p>
+              </div>
+            </div>
+            <div role='radiogroup' aria-label='Формат текстового експорту' className='grid grid-cols-2 gap-2 mt-4'>
+              {(['base64', 'base32768'] as const).map(format => {
+                const selected = textExportFormat === format;
+                return (
+                  <button
+                    key={format}
+                    type='button'
+                    role='radio'
+                    aria-checked={selected}
+                    onClick={() => changeTextExportFormat(format)}
+                    className={`h-11 rounded-xl border font-semibold active-elevate ${selected ? 'border-primary bg-primary text-primary-foreground' : 'border-border bg-background'}`}
+                  >
+                    {format === 'base32768' ? 'Base32768' : 'Base64'}
+                  </button>
+                );
+              })}
+            </div>
           </div>
         </section>
       </div>
