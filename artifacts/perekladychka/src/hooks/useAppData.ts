@@ -1,26 +1,15 @@
 import { useState, useEffect, useCallback } from 'react';
 import type { AppData } from '../types';
-import { normalizeAppData } from '../utils/appData';
 
 const STORAGE_KEY = 'perekladychka_data';
 const INITIAL_DATA: AppData = { soldiers: [], sessions: [] };
-
-function parseStoredData(value: string): AppData | null {
-  const parsed = JSON.parse(value) as Partial<AppData>;
-  if (!Array.isArray(parsed?.soldiers) || !Array.isArray(parsed?.sessions)) return null;
-  return normalizeAppData(parsed as AppData);
-}
 
 export function useAppData() {
   const [data, setDataState] = useState<AppData>(() => {
     try {
       const stored = localStorage.getItem(STORAGE_KEY);
       if (stored) {
-        const normalized = parseStoredData(stored);
-        if (normalized) {
-          localStorage.setItem(STORAGE_KEY, JSON.stringify(normalized));
-          return normalized;
-        }
+        return JSON.parse(stored);
       }
     } catch (e) {
       console.error('Failed to parse app data', e);
@@ -31,11 +20,10 @@ export function useAppData() {
   const setData = useCallback((newData: AppData | ((prev: AppData) => AppData)) => {
     setDataState(prev => {
       const updated = typeof newData === 'function' ? newData(prev) : newData;
-      const normalized = normalizeAppData(updated);
-      localStorage.setItem(STORAGE_KEY, JSON.stringify(normalized));
+      localStorage.setItem(STORAGE_KEY, JSON.stringify(updated));
       // Dispatch custom event so other hook instances can sync if needed
       window.dispatchEvent(new Event('perekladychka_sync'));
-      return normalized;
+      return updated;
     });
   }, []);
 
@@ -44,8 +32,7 @@ export function useAppData() {
       try {
         const stored = localStorage.getItem(STORAGE_KEY);
         if (stored) {
-          const normalized = parseStoredData(stored);
-          if (normalized) setDataState(normalized);
+          setDataState(JSON.parse(stored));
         }
       } catch (e) {
         // ignore
