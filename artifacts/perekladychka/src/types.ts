@@ -30,7 +30,7 @@ export type Soldier = {
 export type RollCallEntry = {
   soldierId: string;
   status: StoredStatus;
-  timestamp: string;
+  timestamp: number;
 };
 
 export type RollCallSession = {
