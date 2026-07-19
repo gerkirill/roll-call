@@ -295,7 +295,7 @@ function SortableRow({
       ref={setNodeRef}
       style={style}
       className={cn(
-        "flex items-center gap-2 bg-card border border-border rounded-xl touch-manipulation",
+        "flex items-center bg-card border border-border rounded-xl touch-manipulation",
         isReorderMode && "select-none",
         isDragging && "opacity-50 shadow-lg z-10"
       )}
@@ -303,7 +303,7 @@ function SortableRow({
       {isReorderMode && (
         <button
           type="button"
-          className="flex items-center justify-center pl-3 pr-1 py-4 text-muted-foreground touch-none cursor-grab active:cursor-grabbing"
+          className="flex items-center justify-center pl-3 pr-0 py-4 text-muted-foreground touch-none cursor-grab active:cursor-grabbing"
           {...attributes}
           {...listeners}
           aria-label={`Перетягнути ${soldier.lastName}`}
@@ -316,10 +316,7 @@ function SortableRow({
         type="button"
         onClick={onEdit}
         disabled={isReorderMode}
-        className={cn(
-          "flex items-center gap-3 flex-1 pr-4 py-3 text-left active-elevate disabled:pointer-events-none",
-          isReorderMode ? "pl-1" : "pl-4"
-        )}
+        className="flex items-center gap-3 flex-1 px-4 py-3 text-left active-elevate disabled:pointer-events-none"
       >
         <div className="w-10 h-10 rounded-full bg-secondary/50 flex items-center justify-center shrink-0">
           <User className="w-5 h-5 text-muted-foreground" />
