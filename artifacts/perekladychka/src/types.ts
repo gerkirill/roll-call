@@ -1,8 +1,7 @@
-export type Status = 'present' | 'same_as_last' | 'duty_company' | 'duty_canteen' | 'sick' | 'absent';
+export type Status = 'present' | 'duty_company' | 'duty_canteen' | 'sick' | 'absent';
 
 export const STATUS_LABELS: Record<Status, string> = {
   present: 'Присутній',
-  same_as_last: 'Як минулого разу',
   duty_company: 'Черговий по роті',
   duty_canteen: 'Черговий по їдальні',
   sick: 'Хворий',
@@ -11,14 +10,13 @@ export const STATUS_LABELS: Record<Status, string> = {
 
 export const STATUS_EMOJI: Record<Status, string> = {
   present: '✅',
-  same_as_last: '🔁',
   duty_company: '🪖',
   duty_canteen: '🍽️',
   sick: '🤒',
   absent: '❓',
 };
 
-export type StoredStatus = Exclude<Status, 'same_as_last'>;
+export type StoredStatus = Status;
 
 export type Soldier = {
   id: string;
