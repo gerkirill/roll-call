@@ -26,7 +26,7 @@ function createExportFile(data: AppData): File {
   const dateStr = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
   return new File(
     [JSON.stringify(data, null, 2)],
-    `perekladychka-${dateStr}.json`,
+    `pereklychka-${dateStr}.json`,
     { type: 'application/json' },
   );
 }
