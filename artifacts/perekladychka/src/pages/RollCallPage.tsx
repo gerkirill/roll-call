@@ -1,3 +1,4 @@
+import { useState } from "react";
 import { useRoute, useLocation } from "wouter";
 import { format, isToday, isYesterday, parseISO } from "date-fns";
 import { uk } from "date-fns/locale";
@@ -7,6 +8,8 @@ import { Check, ChevronLeft, Calendar, Trash2, Undo2 } from "lucide-react";
 import { useRoster } from "@/hooks/useRoster";
 import { useRollCall } from "@/hooks/useRollCall";
 import { STATUS_EMOJI, STATUS_LABELS, Status, StoredStatus } from "@/types";
+
+type RollCallTab = "unmarked" | "marked" | "absent";
 
 function formatStatusTime(startedAt: string, elapsedSeconds: number) {
   const sessionStart = Date.parse(startedAt);
@@ -24,6 +27,7 @@ export default function RollCallPage() {
   const [, setLocation] = useLocation();
   const { soldiers } = useRoster();
   const { sessions, previousSession, completeSession, cancelSession, setEntry, undoLastEntry, removeEntry } = useRollCall();
+  const [activeTab, setActiveTab] = useState<RollCallTab>("unmarked");
 
   const sessionId = params?.id;
   const currentSession = sessions.find(s => s.id === sessionId);
@@ -60,12 +64,14 @@ export default function RollCallPage() {
     ? [lastMarkedSoldier.lastName, lastMarkedSoldier.firstName].filter(Boolean).join(" ")
     : null;
 
-  // Обидві секції наслідують порядок особового складу, включно з імпортом і ручним сортуванням.
+  // Усі вкладки наслідують порядок особового складу, включно з імпортом і ручним сортуванням.
   const unmarkedSoldiers = soldiers.filter(soldier => !markedIds.has(soldier.id));
   const markedSoldiers = soldiers.flatMap(soldier => {
     const entry = entriesBySoldierId.get(soldier.id);
     return entry ? [{ entry, soldier }] : [];
   });
+  const absentSoldiers = markedSoldiers.filter(({ entry }) => entry.status !== "present");
+  const visibleMarkedSoldiers = activeTab === "absent" ? absentSoldiers : markedSoldiers;
 
   const getPreviousStatus = (soldierId: string): { status: StoredStatus, timestamp: number, startedAt: string } | null => {
     if (!previousSession) return null;
@@ -75,9 +81,9 @@ export default function RollCallPage() {
 
   const handleMark = (soldierId: string, status: Status) => {
     navigator.vibrate?.(30);
-    
+
     let resolvedStatus: StoredStatus;
-    if (status === 'same_as_last') {
+    if (status === "same_as_last") {
       const prev = getPreviousStatus(soldierId);
       if (!prev) return; // Should not happen if button is hidden
       resolvedStatus = prev.status;
@@ -105,7 +111,12 @@ export default function RollCallPage() {
   const prevCounts = previousSession ? countStatuses(previousSession.entries) : null;
   const currCounts = countStatuses(currentSession.entries);
 
-  const statusesOrder: StoredStatus[] = ['present', 'duty_company', 'duty_canteen', 'sick', 'absent'];
+  const statusesOrder: StoredStatus[] = ["present", "duty_company", "duty_canteen", "sick", "absent"];
+  const tabs: Array<{ id: RollCallTab; label: string; count: number }> = [
+    { id: "unmarked", label: "Не відмічені", count: unmarkedSoldiers.length },
+    { id: "marked", label: "Відмічені", count: markedSoldiers.length },
+    { id: "absent", label: "Відсутні", count: absentSoldiers.length },
+  ];
 
   return (
     <div className="flex flex-col min-h-[100dvh] bg-background">
@@ -124,7 +135,7 @@ export default function RollCallPage() {
               </div>
             </div>
           </div>
-          <button 
+          <button
             onClick={handleComplete}
             className="px-4 py-2 bg-primary text-primary-foreground text-sm font-bold rounded-lg active-elevate touch-manipulation"
           >
@@ -133,7 +144,7 @@ export default function RollCallPage() {
         </div>
       </header>
 
-      {/* Statistics panel */}
+      {/* Statistics panel and list tabs */}
       <div className="sticky top-14 z-30 bg-background/95 backdrop-blur border-b border-border px-4 py-3 text-sm shadow-xs">
         <div className="grid grid-cols-[max-content_minmax(0,1fr)] items-center gap-x-3 gap-y-1.5">
           <span className="text-muted-foreground font-medium text-xs uppercase tracking-wider">Попередня:</span>
@@ -175,23 +186,40 @@ export default function RollCallPage() {
             </span>
           </button>
         </div>
+
+        <div role="tablist" aria-label="Фільтр поточної переклички" className="grid grid-cols-3 gap-2 mt-3">
+          {tabs.map(tab => {
+            const selected = activeTab === tab.id;
+            return (
+              <button
+                key={tab.id}
+                type="button"
+                role="tab"
+                aria-selected={selected}
+                onClick={() => setActiveTab(tab.id)}
+                className={`min-h-10 px-1.5 py-2 rounded-lg border text-xs font-semibold leading-tight transition-colors touch-manipulation ${
+                  selected
+                    ? "bg-primary text-primary-foreground border-primary"
+                    : "bg-card text-muted-foreground border-border active-elevate"
+                }`}
+              >
+                {tab.label} ({tab.count})
+              </button>
+            );
+          })}
+        </div>
       </div>
 
       {/* Scrollable list */}
       <div className="flex-1 overflow-y-auto px-4 py-4 pb-[calc(env(safe-area-inset-bottom)+2rem)] flex flex-col gap-6">
-        
-        {/* Не відмічені */}
-        <div>
-          <h2 className="text-sm font-bold text-muted-foreground uppercase tracking-wider mb-3 px-1">
-            Не відмічені <span className="ml-1 bg-secondary text-secondary-foreground px-2 py-0.5 rounded-full text-xs">{unmarkedSoldiers.length}</span>
-          </h2>
+        {activeTab === "unmarked" ? (
           <div className="flex flex-col gap-3">
             <AnimatePresence initial={false}>
               {unmarkedSoldiers.map(soldier => {
                 const prev = getPreviousStatus(soldier.id);
                 const hasPrevStatus = !!prev;
-                const canUseSameAsLast = hasPrevStatus && prev.status !== 'present';
-                
+                const canUseSameAsLast = hasPrevStatus && prev.status !== "present";
+
                 return (
                   <motion.div
                     key={soldier.id}
@@ -218,48 +246,48 @@ export default function RollCallPage() {
 
                     <div className="grid grid-cols-2 gap-2">
                       <button
-                        onClick={() => handleMark(soldier.id, 'present')}
+                        onClick={() => handleMark(soldier.id, "present")}
                         className="col-span-2 flex items-center justify-center gap-2 h-12 bg-primary text-primary-foreground font-bold rounded-xl active-elevate shadow-sm touch-manipulation"
                       >
-                        {STATUS_EMOJI['present']} {STATUS_LABELS['present']}
+                        {STATUS_EMOJI["present"]} {STATUS_LABELS["present"]}
                       </button>
-                      
+
                       {canUseSameAsLast && (
                         <button
-                          onClick={() => handleMark(soldier.id, 'same_as_last')}
+                          onClick={() => handleMark(soldier.id, "same_as_last")}
                           className="col-span-2 flex items-center justify-center gap-2 h-12 bg-accent text-accent-foreground font-bold rounded-xl active-elevate shadow-sm touch-manipulation"
                         >
-                          {STATUS_EMOJI['same_as_last']} Як минулого: {STATUS_EMOJI[prev!.status]}
+                          {STATUS_EMOJI["same_as_last"]} Як минулого: {STATUS_EMOJI[prev!.status]}
                         </button>
                       )}
-                      
+
                       <button
-                        onClick={() => handleMark(soldier.id, 'duty_company')}
+                        onClick={() => handleMark(soldier.id, "duty_company")}
                         className="flex flex-col items-center justify-center h-16 bg-secondary text-secondary-foreground text-xs font-medium rounded-xl active-elevate touch-manipulation border border-border"
                       >
-                        <span className="text-xl mb-0.5">{STATUS_EMOJI['duty_company']}</span>
+                        <span className="text-xl mb-0.5">{STATUS_EMOJI["duty_company"]}</span>
                         <span className="truncate w-full text-center px-1">Наряд рота</span>
                       </button>
                       <button
-                        onClick={() => handleMark(soldier.id, 'duty_canteen')}
+                        onClick={() => handleMark(soldier.id, "duty_canteen")}
                         className="flex flex-col items-center justify-center h-16 bg-secondary text-secondary-foreground text-xs font-medium rounded-xl active-elevate touch-manipulation border border-border"
                       >
-                        <span className="text-xl mb-0.5">{STATUS_EMOJI['duty_canteen']}</span>
+                        <span className="text-xl mb-0.5">{STATUS_EMOJI["duty_canteen"]}</span>
                         <span className="truncate w-full text-center px-1">Наряд їдальня</span>
                       </button>
                       <button
-                        onClick={() => handleMark(soldier.id, 'sick')}
+                        onClick={() => handleMark(soldier.id, "sick")}
                         className="flex flex-col items-center justify-center h-16 bg-secondary text-secondary-foreground text-xs font-medium rounded-xl active-elevate touch-manipulation border border-border"
                       >
-                        <span className="text-xl mb-0.5">{STATUS_EMOJI['sick']}</span>
-                        <span className="truncate w-full text-center px-1">{STATUS_LABELS['sick']}</span>
+                        <span className="text-xl mb-0.5">{STATUS_EMOJI["sick"]}</span>
+                        <span className="truncate w-full text-center px-1">{STATUS_LABELS["sick"]}</span>
                       </button>
                       <button
-                        onClick={() => handleMark(soldier.id, 'absent')}
+                        onClick={() => handleMark(soldier.id, "absent")}
                         className="flex flex-col items-center justify-center h-16 bg-destructive/10 text-destructive text-xs font-medium rounded-xl active-elevate touch-manipulation border border-destructive/20"
                       >
-                        <span className="text-xl mb-0.5">{STATUS_EMOJI['absent']}</span>
-                        <span className="truncate w-full text-center px-1">{STATUS_LABELS['absent']}</span>
+                        <span className="text-xl mb-0.5">{STATUS_EMOJI["absent"]}</span>
+                        <span className="truncate w-full text-center px-1">{STATUS_LABELS["absent"]}</span>
                       </button>
                     </div>
                   </motion.div>
@@ -269,52 +297,55 @@ export default function RollCallPage() {
                 <motion.div
                   initial={{ opacity: 0 }}
                   animate={{ opacity: 1 }}
-                  className="flex flex-col items-center justify-center py-8 text-center bg-card/50 rounded-2xl border-2 border-dashed border-border"
+                  className="flex flex-col items-center justify-center py-8 px-4 text-center bg-card/50 rounded-2xl border-2 border-dashed border-border"
                 >
                   <div className="w-12 h-12 rounded-full bg-primary/20 flex items-center justify-center mb-2">
                     <Check className="w-6 h-6 text-primary" />
                   </div>
                   <div className="font-semibold text-lg text-primary">Всіх відмічено!</div>
-                  <div className="text-sm text-muted-foreground mt-1">Перевірте список нижче і завершіть перекличку.</div>
+                  <div className="text-sm text-muted-foreground mt-1">Перейдіть до вкладки «Відмічені», перевірте список і завершіть перекличку.</div>
                 </motion.div>
               )}
             </AnimatePresence>
           </div>
-        </div>
-
-        {/* Відмічені */}
-        {markedSoldiers.length > 0 && (
-          <div>
-            <h2 className="text-sm font-bold text-muted-foreground uppercase tracking-wider mb-3 px-1">
-              Відмічені <span className="ml-1 bg-primary text-primary-foreground px-2 py-0.5 rounded-full text-xs">{markedSoldiers.length}</span>
-            </h2>
-            <div className="flex flex-col gap-2">
-              <AnimatePresence initial={false}>
-                {markedSoldiers.map(({ entry, soldier }) => (
-                  <motion.div
-                    key={entry.soldierId}
-                    layout
-                    initial={{ opacity: 0, scale: 0.95 }}
-                    animate={{ opacity: 1, scale: 1 }}
-                    className="bg-card border border-border rounded-xl p-3 flex items-center justify-between shadow-sm active-elevate touch-manipulation"
-                    onClick={() => {
-                      if (confirm("Скинути відмітку?")) {
-                        removeEntry(currentSession.id, soldier.id);
-                      }
-                    }}
-                    role="button"
-                  >
-                    <div className="flex-1 min-w-0 pr-3">
-                      <div className="font-bold truncate text-foreground text-[15px]">{soldier.lastName} {soldier.firstName}</div>
-                      <div className="text-xs text-muted-foreground mt-0.5">{formatStatusTime(currentSession.startedAt, entry.timestamp)}</div>
-                    </div>
-                    <div className="shrink-0 flex items-center gap-1.5 bg-secondary px-2.5 py-1.5 rounded-lg border border-border">
-                      <span className="text-lg leading-none">{STATUS_EMOJI[entry.status]}</span>
-                      <span className="text-sm font-medium text-foreground">{STATUS_LABELS[entry.status]}</span>
-                    </div>
-                  </motion.div>
-                ))}
-              </AnimatePresence>
+        ) : visibleMarkedSoldiers.length > 0 ? (
+          <div className="flex flex-col gap-2">
+            <AnimatePresence initial={false}>
+              {visibleMarkedSoldiers.map(({ entry, soldier }) => (
+                <motion.div
+                  key={entry.soldierId}
+                  layout
+                  initial={{ opacity: 0, scale: 0.95 }}
+                  animate={{ opacity: 1, scale: 1 }}
+                  className="bg-card border border-border rounded-xl p-3 flex items-center justify-between shadow-sm active-elevate touch-manipulation"
+                  onClick={() => {
+                    if (confirm("Скинути відмітку?")) {
+                      removeEntry(currentSession.id, soldier.id);
+                    }
+                  }}
+                  role="button"
+                >
+                  <div className="flex-1 min-w-0 pr-3">
+                    <div className="font-bold truncate text-foreground text-[15px]">{soldier.lastName} {soldier.firstName}</div>
+                    <div className="text-xs text-muted-foreground mt-0.5">{formatStatusTime(currentSession.startedAt, entry.timestamp)}</div>
+                  </div>
+                  <div className="shrink-0 flex items-center gap-1.5 bg-secondary px-2.5 py-1.5 rounded-lg border border-border">
+                    <span className="text-lg leading-none">{STATUS_EMOJI[entry.status]}</span>
+                    <span className="text-sm font-medium text-foreground">{STATUS_LABELS[entry.status]}</span>
+                  </div>
+                </motion.div>
+              ))}
+            </AnimatePresence>
+          </div>
+        ) : (
+          <div className="flex flex-col items-center justify-center py-8 px-4 text-center bg-card/50 rounded-2xl border-2 border-dashed border-border">
+            <div className="font-semibold text-lg text-foreground">
+              {activeTab === "marked" ? "Ще нікого не відмічено" : "Усі відмічені — в строю"}
+            </div>
+            <div className="text-sm text-muted-foreground mt-1">
+              {activeTab === "marked"
+                ? "Відмітьте військовослужбовця у вкладці «Не відмічені»."
+                : "Немає відміток зі статусом поза строєм."}
             </div>
           </div>
         )}
