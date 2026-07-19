@@ -1,15 +1,16 @@
 import { useState } from "react";
 import { useRoute, useLocation } from "wouter";
-import { format, isToday, isYesterday, parseISO } from "date-fns";
+import { format, isSameDay, isToday, isYesterday, parseISO } from "date-fns";
 import { uk } from "date-fns/locale";
 import { motion, AnimatePresence } from "framer-motion";
 import * as AlertDialog from "@radix-ui/react-alert-dialog";
 import { Check, ChevronLeft, Calendar, Trash2, Undo2 } from "lucide-react";
 import { useRoster } from "@/hooks/useRoster";
 import { useRollCall } from "@/hooks/useRollCall";
-import { STATUS_EMOJI, STATUS_LABELS, Status, StoredStatus } from "@/types";
+import { STATUS_EMOJI, STATUS_LABELS, StoredStatus } from "@/types";
 
 type RollCallTab = "unmarked" | "marked" | "absent";
+type PreviousStatus = { status: StoredStatus; timestamp: number; startedAt: string };
 
 function formatStatusTime(startedAt: string, elapsedSeconds: number) {
   const sessionStart = Date.parse(startedAt);
@@ -20,6 +21,18 @@ function formatStatusTime(startedAt: string, elapsedSeconds: number) {
   if (isToday(date)) return `Сьогодні ${timeStr}`;
   if (isYesterday(date)) return `Вчора ${timeStr}`;
   return format(date, "dd.MM HH:mm");
+}
+
+function getSuggestedPreviousStatus(previousStatus: PreviousStatus | null, currentSessionStartedAt: string): StoredStatus | null {
+  if (!previousStatus || previousStatus.status === "present") return null;
+
+  if (previousStatus.status === "sick" || previousStatus.status === "absent") {
+    return previousStatus.status;
+  }
+
+  return isSameDay(parseISO(previousStatus.startedAt), parseISO(currentSessionStartedAt))
+    ? previousStatus.status
+    : null;
 }
 
 export default function RollCallPage() {
@@ -73,25 +86,15 @@ export default function RollCallPage() {
   const absentSoldiers = markedSoldiers.filter(({ entry }) => entry.status !== "present");
   const visibleMarkedSoldiers = activeTab === "absent" ? absentSoldiers : markedSoldiers;
 
-  const getPreviousStatus = (soldierId: string): { status: StoredStatus, timestamp: number, startedAt: string } | null => {
+  const getPreviousStatus = (soldierId: string): PreviousStatus | null => {
     if (!previousSession) return null;
     const entry = previousSession.entries.find(e => e.soldierId === soldierId);
     return entry ? { ...entry, startedAt: previousSession.startedAt } : null;
   };
 
-  const handleMark = (soldierId: string, status: Status) => {
+  const handleMark = (soldierId: string, status: StoredStatus) => {
     navigator.vibrate?.(30);
-
-    let resolvedStatus: StoredStatus;
-    if (status === "same_as_last") {
-      const prev = getPreviousStatus(soldierId);
-      if (!prev) return; // Should not happen if button is hidden
-      resolvedStatus = prev.status;
-    } else {
-      resolvedStatus = status as StoredStatus;
-    }
-
-    setEntry(currentSession.id, soldierId, resolvedStatus);
+    setEntry(currentSession.id, soldierId, status);
   };
 
   const handleUndoLast = () => {
@@ -217,8 +220,8 @@ export default function RollCallPage() {
             <AnimatePresence initial={false}>
               {unmarkedSoldiers.map(soldier => {
                 const prev = getPreviousStatus(soldier.id);
-                const hasPrevStatus = !!prev;
-                const canUseSameAsLast = hasPrevStatus && prev.status !== "present";
+                const suggestedStatus = getSuggestedPreviousStatus(prev, currentSession.startedAt);
+                const suggestedClass = "ring-2 ring-inset ring-primary/40 shadow-sm";
 
                 return (
                   <motion.div
@@ -252,39 +255,34 @@ export default function RollCallPage() {
                         {STATUS_EMOJI["present"]} {STATUS_LABELS["present"]}
                       </button>
 
-                      {canUseSameAsLast && (
-                        <button
-                          onClick={() => handleMark(soldier.id, "same_as_last")}
-                          className="col-span-2 flex items-center justify-center gap-2 h-12 bg-accent text-accent-foreground font-bold rounded-xl active-elevate shadow-sm touch-manipulation"
-                        >
-                          {STATUS_EMOJI["same_as_last"]} Як минулого: {STATUS_EMOJI[prev!.status]}
-                        </button>
-                      )}
-
                       <button
                         onClick={() => handleMark(soldier.id, "duty_company")}
-                        className="flex flex-col items-center justify-center h-16 bg-secondary text-secondary-foreground text-xs font-medium rounded-xl active-elevate touch-manipulation border border-border"
+                        aria-label={suggestedStatus === "duty_company" ? "Рекомендований статус: наряд рота" : "Наряд рота"}
+                        className={`flex h-16 flex-col items-center justify-center bg-secondary text-secondary-foreground text-xs font-medium rounded-xl active-elevate touch-manipulation border border-border ${suggestedStatus === "duty_company" ? suggestedClass : ""}`}
                       >
                         <span className="text-xl mb-0.5">{STATUS_EMOJI["duty_company"]}</span>
                         <span className="truncate w-full text-center px-1">Наряд рота</span>
                       </button>
                       <button
                         onClick={() => handleMark(soldier.id, "duty_canteen")}
-                        className="flex flex-col items-center justify-center h-16 bg-secondary text-secondary-foreground text-xs font-medium rounded-xl active-elevate touch-manipulation border border-border"
+                        aria-label={suggestedStatus === "duty_canteen" ? "Рекомендований статус: наряд їдальня" : "Наряд їдальня"}
+                        className={`flex h-16 flex-col items-center justify-center bg-secondary text-secondary-foreground text-xs font-medium rounded-xl active-elevate touch-manipulation border border-border ${suggestedStatus === "duty_canteen" ? suggestedClass : ""}`}
                       >
                         <span className="text-xl mb-0.5">{STATUS_EMOJI["duty_canteen"]}</span>
                         <span className="truncate w-full text-center px-1">Наряд їдальня</span>
                       </button>
                       <button
                         onClick={() => handleMark(soldier.id, "sick")}
-                        className="flex flex-col items-center justify-center h-16 bg-secondary text-secondary-foreground text-xs font-medium rounded-xl active-elevate touch-manipulation border border-border"
+                        aria-label={suggestedStatus === "sick" ? `Рекомендований статус: ${STATUS_LABELS["sick"]}` : STATUS_LABELS["sick"]}
+                        className={`flex h-16 flex-col items-center justify-center bg-secondary text-secondary-foreground text-xs font-medium rounded-xl active-elevate touch-manipulation border border-border ${suggestedStatus === "sick" ? suggestedClass : ""}`}
                       >
                         <span className="text-xl mb-0.5">{STATUS_EMOJI["sick"]}</span>
                         <span className="truncate w-full text-center px-1">{STATUS_LABELS["sick"]}</span>
                       </button>
                       <button
                         onClick={() => handleMark(soldier.id, "absent")}
-                        className="flex flex-col items-center justify-center h-16 bg-destructive/10 text-destructive text-xs font-medium rounded-xl active-elevate touch-manipulation border border-destructive/20"
+                        aria-label={suggestedStatus === "absent" ? `Рекомендований статус: ${STATUS_LABELS["absent"]}` : STATUS_LABELS["absent"]}
+                        className={`flex h-16 flex-col items-center justify-center bg-destructive/10 text-destructive text-xs font-medium rounded-xl active-elevate touch-manipulation border border-destructive/20 ${suggestedStatus === "absent" ? suggestedClass : ""}`}
                       >
                         <span className="text-xl mb-0.5">{STATUS_EMOJI["absent"]}</span>
                         <span className="truncate w-full text-center px-1">{STATUS_LABELS["absent"]}</span>
