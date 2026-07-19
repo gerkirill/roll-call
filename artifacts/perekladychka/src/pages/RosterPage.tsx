@@ -316,7 +316,10 @@ function SortableRow({
         type="button"
         onClick={onEdit}
         disabled={isReorderMode}
-        className="flex items-center gap-3 flex-1 px-4 py-3 text-left active-elevate disabled:pointer-events-none"
+        className={cn(
+          "flex items-center gap-3 flex-1 pr-4 py-3 text-left active-elevate disabled:pointer-events-none",
+          isReorderMode ? "pl-1" : "pl-4"
+        )}
       >
         <div className="w-10 h-10 rounded-full bg-secondary/50 flex items-center justify-center shrink-0">
           <User className="w-5 h-5 text-muted-foreground" />
