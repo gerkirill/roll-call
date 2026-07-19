@@ -10,10 +10,12 @@ import { STATUS_EMOJI, STATUS_LABELS, StoredStatus } from "@/types";
 
 function formatDuration(startedAt: string, completedAt: string): string {
   const totalSeconds = Math.max(0, differenceInSeconds(parseISO(completedAt), parseISO(startedAt)));
-  const minutes = Math.floor(totalSeconds / 60);
+  const hours = Math.floor(totalSeconds / 3600);
+  const minutes = Math.floor((totalSeconds % 3600) / 60);
   const seconds = totalSeconds % 60;
+  const minutesAndSeconds = `${minutes} хв ${seconds.toString().padStart(2, "0")} с`;
 
-  return `${minutes} хв ${seconds.toString().padStart(2, "0")} с`;
+  return hours > 0 ? `${hours} год ${minutesAndSeconds}` : minutesAndSeconds;
 }
 
 export default function HistoryPage() {
