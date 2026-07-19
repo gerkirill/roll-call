@@ -43,6 +43,7 @@ export default function RosterPage() {
   const [editingSoldier, setEditingSoldier] = useState<Soldier | null | "new">(null);
   const [isImportOpen, setIsImportOpen] = useState(false);
   const [importText, setImportText] = useState("");
+  const [isReorderMode, setIsReorderMode] = useState(false);
 
   const parsedSoldiers = parseRosterText(importText);
 
@@ -56,6 +57,7 @@ export default function RosterPage() {
   );
 
   const handleDragEnd = (event: DragEndEvent) => {
+    if (!isReorderMode) return;
     const { active, over } = event;
     if (!over || active.id === over.id) return;
     const oldIndex = soldiers.findIndex((s) => s.id === active.id);
@@ -93,7 +95,29 @@ export default function RosterPage() {
           </button>
         </header>
 
-        <div className="flex flex-col gap-2 pb-20">
+        {soldiers.length > 1 && (
+          <button
+            type="button"
+            onClick={() => setIsReorderMode((enabled) => !enabled)}
+            aria-pressed={isReorderMode}
+            className={cn(
+              "h-11 px-4 flex items-center justify-center gap-2 rounded-xl border font-semibold touch-manipulation active-elevate",
+              isReorderMode
+                ? "border-primary bg-primary text-primary-foreground"
+                : "border-border bg-card text-foreground"
+            )}
+          >
+            <GripVertical className="w-4 h-4" />
+            {isReorderMode ? "Завершити зміну порядку" : "Змінити порядок"}
+          </button>
+        )}
+
+        <div
+          className={cn(
+            "flex flex-col gap-2 pb-20",
+            isReorderMode && "select-none"
+          )}
+        >
           {soldiers.length === 0 ? (
             <div className="flex flex-col items-center text-center py-10 px-4">
               <div className="w-14 h-14 rounded-full bg-secondary/50 flex items-center justify-center mb-4">
@@ -136,6 +160,7 @@ export default function RosterPage() {
                   <SortableRow
                     key={soldier.id}
                     soldier={soldier}
+                    isReorderMode={isReorderMode}
                     onEdit={() => setEditingSoldier(soldier)}
                   />
                 ))}
@@ -250,13 +275,15 @@ export default function RosterPage() {
 
 function SortableRow({
   soldier,
+  isReorderMode,
   onEdit,
 }: {
   soldier: Soldier;
+  isReorderMode: boolean;
   onEdit: () => void;
 }) {
   const { attributes, listeners, setNodeRef, transform, transition, isDragging } =
-    useSortable({ id: soldier.id });
+    useSortable({ id: soldier.id, disabled: !isReorderMode });
 
   const style = {
     transform: CSS.Transform.toString(transform),
@@ -269,22 +296,27 @@ function SortableRow({
       style={style}
       className={cn(
         "flex items-center gap-2 bg-card border border-border rounded-xl touch-manipulation",
+        isReorderMode && "select-none",
         isDragging && "opacity-50 shadow-lg z-10"
       )}
     >
-      <button
-        type="button"
-        className="flex items-center justify-center pl-3 pr-1 py-4 text-muted-foreground/50 touch-none cursor-grab active:cursor-grabbing"
-        {...attributes}
-        {...listeners}
-        aria-label="Перетягнути"
-      >
-        <GripVertical className="w-5 h-5" />
-      </button>
+      {isReorderMode && (
+        <button
+          type="button"
+          className="flex items-center justify-center pl-3 pr-1 py-4 text-muted-foreground touch-none cursor-grab active:cursor-grabbing"
+          {...attributes}
+          {...listeners}
+          aria-label={`Перетягнути ${soldier.lastName}`}
+        >
+          <GripVertical className="w-5 h-5" />
+        </button>
+      )}
 
       <button
+        type="button"
         onClick={onEdit}
-        className="flex items-center gap-3 flex-1 pr-4 py-3 text-left active-elevate"
+        disabled={isReorderMode}
+        className="flex items-center gap-3 flex-1 px-4 py-3 text-left active-elevate disabled:pointer-events-none"
       >
         <div className="w-10 h-10 rounded-full bg-secondary/50 flex items-center justify-center shrink-0">
           <User className="w-5 h-5 text-muted-foreground" />
