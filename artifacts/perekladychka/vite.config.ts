@@ -41,6 +41,8 @@ export default defineConfig({
         name: 'Перекличка',
         short_name: 'Перекличка',
         description: 'Перекличка особового складу',
+        lang: 'uk-UA',
+        dir: 'ltr',
         theme_color: '#2d4a1e',
         background_color: '#1a1c18',
         display: 'standalone',
