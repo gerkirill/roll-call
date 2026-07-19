@@ -35,14 +35,6 @@ function getSuggestedPreviousStatus(previousStatus: PreviousStatus | null, curre
     : null;
 }
 
-function PreviousStatusHint() {
-  return (
-    <span className="mt-1 rounded-full bg-primary px-2 py-0.5 text-[10px] font-bold leading-none text-primary-foreground">
-      🔁 Як минулого
-    </span>
-  );
-}
-
 export default function RollCallPage() {
   const [, params] = useRoute("/roll-call/:id");
   const [, setLocation] = useLocation();
@@ -229,6 +221,7 @@ export default function RollCallPage() {
               {unmarkedSoldiers.map(soldier => {
                 const prev = getPreviousStatus(soldier.id);
                 const suggestedStatus = getSuggestedPreviousStatus(prev, currentSession.startedAt);
+                const suggestedClass = "ring-2 ring-inset ring-primary/40 shadow-sm";
 
                 return (
                   <motion.div
@@ -264,39 +257,35 @@ export default function RollCallPage() {
 
                       <button
                         onClick={() => handleMark(soldier.id, "duty_company")}
-                        aria-label={suggestedStatus === "duty_company" ? "Наряд рота. Як минулого разу" : "Наряд рота"}
-                        className={`flex flex-col items-center justify-center min-h-16 py-2 bg-secondary text-secondary-foreground text-xs font-medium rounded-xl active-elevate touch-manipulation border border-border ${suggestedStatus === "duty_company" ? "ring-2 ring-primary ring-offset-2 ring-offset-card" : ""}`}
+                        aria-label={suggestedStatus === "duty_company" ? "Рекомендований статус: наряд рота" : "Наряд рота"}
+                        className={`flex h-16 flex-col items-center justify-center bg-secondary text-secondary-foreground text-xs font-medium rounded-xl active-elevate touch-manipulation border border-border ${suggestedStatus === "duty_company" ? suggestedClass : ""}`}
                       >
                         <span className="text-xl mb-0.5">{STATUS_EMOJI["duty_company"]}</span>
                         <span className="truncate w-full text-center px-1">Наряд рота</span>
-                        {suggestedStatus === "duty_company" && <PreviousStatusHint />}
                       </button>
                       <button
                         onClick={() => handleMark(soldier.id, "duty_canteen")}
-                        aria-label={suggestedStatus === "duty_canteen" ? "Наряд їдальня. Як минулого разу" : "Наряд їдальня"}
-                        className={`flex flex-col items-center justify-center min-h-16 py-2 bg-secondary text-secondary-foreground text-xs font-medium rounded-xl active-elevate touch-manipulation border border-border ${suggestedStatus === "duty_canteen" ? "ring-2 ring-primary ring-offset-2 ring-offset-card" : ""}`}
+                        aria-label={suggestedStatus === "duty_canteen" ? "Рекомендований статус: наряд їдальня" : "Наряд їдальня"}
+                        className={`flex h-16 flex-col items-center justify-center bg-secondary text-secondary-foreground text-xs font-medium rounded-xl active-elevate touch-manipulation border border-border ${suggestedStatus === "duty_canteen" ? suggestedClass : ""}`}
                       >
                         <span className="text-xl mb-0.5">{STATUS_EMOJI["duty_canteen"]}</span>
                         <span className="truncate w-full text-center px-1">Наряд їдальня</span>
-                        {suggestedStatus === "duty_canteen" && <PreviousStatusHint />}
                       </button>
                       <button
                         onClick={() => handleMark(soldier.id, "sick")}
-                        aria-label={suggestedStatus === "sick" ? `${STATUS_LABELS["sick"]}. Як минулого разу` : STATUS_LABELS["sick"]}
-                        className={`flex flex-col items-center justify-center min-h-16 py-2 bg-secondary text-secondary-foreground text-xs font-medium rounded-xl active-elevate touch-manipulation border border-border ${suggestedStatus === "sick" ? "ring-2 ring-primary ring-offset-2 ring-offset-card" : ""}`}
+                        aria-label={suggestedStatus === "sick" ? `Рекомендований статус: ${STATUS_LABELS["sick"]}` : STATUS_LABELS["sick"]}
+                        className={`flex h-16 flex-col items-center justify-center bg-secondary text-secondary-foreground text-xs font-medium rounded-xl active-elevate touch-manipulation border border-border ${suggestedStatus === "sick" ? suggestedClass : ""}`}
                       >
                         <span className="text-xl mb-0.5">{STATUS_EMOJI["sick"]}</span>
                         <span className="truncate w-full text-center px-1">{STATUS_LABELS["sick"]}</span>
-                        {suggestedStatus === "sick" && <PreviousStatusHint />}
                       </button>
                       <button
                         onClick={() => handleMark(soldier.id, "absent")}
-                        aria-label={suggestedStatus === "absent" ? `${STATUS_LABELS["absent"]}. Як минулого разу` : STATUS_LABELS["absent"]}
-                        className={`flex flex-col items-center justify-center min-h-16 py-2 bg-destructive/10 text-destructive text-xs font-medium rounded-xl active-elevate touch-manipulation border border-destructive/20 ${suggestedStatus === "absent" ? "ring-2 ring-primary ring-offset-2 ring-offset-card" : ""}`}
+                        aria-label={suggestedStatus === "absent" ? `Рекомендований статус: ${STATUS_LABELS["absent"]}` : STATUS_LABELS["absent"]}
+                        className={`flex h-16 flex-col items-center justify-center bg-destructive/10 text-destructive text-xs font-medium rounded-xl active-elevate touch-manipulation border border-destructive/20 ${suggestedStatus === "absent" ? suggestedClass : ""}`}
                       >
                         <span className="text-xl mb-0.5">{STATUS_EMOJI["absent"]}</span>
                         <span className="truncate w-full text-center px-1">{STATUS_LABELS["absent"]}</span>
-                        {suggestedStatus === "absent" && <PreviousStatusHint />}
                       </button>
                     </div>
                   </motion.div>
