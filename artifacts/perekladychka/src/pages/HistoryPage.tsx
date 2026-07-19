@@ -1,12 +1,22 @@
 import { useState } from "react";
 import { useLocation, useRoute } from "wouter";
-import { format, parseISO, differenceInMinutes } from "date-fns";
+import { format, parseISO, differenceInSeconds } from "date-fns";
 import { uk } from "date-fns/locale";
 import { ChevronLeft, ChevronRight, Clock, Users } from "lucide-react";
 import { Layout } from "@/components/Layout";
 import { useRollCall } from "@/hooks/useRollCall";
 import { useRoster } from "@/hooks/useRoster";
 import { STATUS_EMOJI, STATUS_LABELS, StoredStatus } from "@/types";
+
+function formatDuration(startedAt: string, completedAt: string): string {
+  const totalSeconds = Math.max(0, differenceInSeconds(parseISO(completedAt), parseISO(startedAt)));
+  const hours = Math.floor(totalSeconds / 3600);
+  const minutes = Math.floor((totalSeconds % 3600) / 60);
+  const seconds = totalSeconds % 60;
+  const minutesAndSeconds = `${minutes} хв ${seconds.toString().padStart(2, "0")} с`;
+
+  return hours > 0 ? `${hours} год ${minutesAndSeconds}` : minutesAndSeconds;
+}
 
 export default function HistoryPage() {
   const [, params] = useRoute("/history/:id");
@@ -30,9 +40,9 @@ export default function HistoryPage() {
       );
     }
 
-    const duration = session.completedAt 
-      ? differenceInMinutes(parseISO(session.completedAt), parseISO(session.startedAt))
-      : 0;
+    const duration = session.completedAt
+      ? formatDuration(session.startedAt, session.completedAt)
+      : "0 хв 00 с";
 
     const markedMap = new Map(session.entries.map(e => [e.soldierId, e.status]));
     const absentCount = soldiers.filter(soldier => markedMap.get(soldier.id) !== 'present').length;
@@ -52,7 +62,7 @@ export default function HistoryPage() {
             <div>
               <h1 className="font-bold text-lg leading-tight">Журнал за {format(parseISO(session.startedAt), "d MMM", { locale: uk })}</h1>
               <div className="text-xs text-muted-foreground">
-                {format(parseISO(session.startedAt), "HH:mm")} • Тривалість: {duration} хв
+                {format(parseISO(session.startedAt), "HH:mm")} • Тривалість: {duration}
               </div>
             </div>
           </div>
@@ -158,8 +168,8 @@ export default function HistoryPage() {
                         <span>{format(parseISO(session.startedAt), "HH:mm")}</span>
                         <span>•</span>
                         <span>
-                          {session.completedAt 
-                            ? `${differenceInMinutes(parseISO(session.completedAt), parseISO(session.startedAt))} хв`
+                          {session.completedAt
+                            ? formatDuration(session.startedAt, session.completedAt)
                             : ''}
                         </span>
                       </div>
