@@ -1,8 +1,9 @@
 import { useCallback, useEffect, useRef, useState, type ReactNode } from 'react';
-import { Binary, Download, Upload, Share2, ClipboardPaste, Trash2, Info, X } from 'lucide-react';
+import { Binary, Download, Upload, Share2, ClipboardPaste, Trash2, Info, X, RefreshCw } from 'lucide-react';
 import { Layout } from '@/components/Layout';
 import { useImportExport } from '@/hooks/useImportExport';
 import { useAppData } from '@/hooks/useAppData';
+import { applyPwaUpdate, usePwaUpdate } from '@/pwaUpdate';
 import { encodeShareString, type TextExportFormat } from '@/utils/share';
 
 const TEXT_EXPORT_FORMAT_STORAGE_KEY = 'perekladychka-text-export-format';
@@ -87,6 +88,7 @@ function SettingsRow(props: {
 export default function SettingsPage() {
   const { exportData, importData, importFromString, clearData } = useImportExport();
   const { data } = useAppData();
+  const { updateAvailable, isUpdating } = usePwaUpdate();
   const fileInputRef = useRef<HTMLInputElement>(null);
   const toastTimerRef = useRef<number | null>(null);
   const preparationRunRef = useRef(0);
@@ -306,7 +308,28 @@ export default function SettingsPage() {
           <h2 className='text-sm font-bold text-muted-foreground uppercase tracking-wider px-1'>Про додаток</h2>
           <div className='bg-card border border-border rounded-2xl p-4 shadow-sm flex items-start gap-4'>
             <div className='w-12 h-12 rounded-2xl bg-primary flex items-center justify-center shrink-0'><Info className='w-6 h-6 text-primary-foreground' /></div>
-            <div><div className='font-bold text-lg mb-1'>Перекличка</div><div className='text-sm text-muted-foreground mb-3'>Версія 1.0.5</div><p className='text-sm leading-relaxed'>Швидкий інструмент для ведення переклички. Всі дані зберігаються виключно на вашому пристрої.</p></div>
+            <div className='flex-1 min-w-0'>
+              <div className='font-bold text-lg mb-1'>Перекличка</div>
+              <div className='flex items-center justify-between gap-3 mb-3'>
+                <div className='min-w-0'>
+                  <div className='text-sm text-muted-foreground'>Версія 1.0.6</div>
+                  {updateAvailable && <div aria-live='polite' className='text-xs font-semibold text-primary mt-0.5'>Доступна нова версія</div>}
+                </div>
+                {updateAvailable && (
+                  <button
+                    type='button'
+                    onClick={applyPwaUpdate}
+                    disabled={isUpdating}
+                    aria-label='Оновити застосунок до нової версії'
+                    className='inline-flex shrink-0 items-center gap-1.5 rounded-lg bg-primary px-2.5 py-1.5 text-xs font-semibold text-primary-foreground active-elevate touch-manipulation disabled:opacity-60 disabled:pointer-events-none'
+                  >
+                    <RefreshCw className={`w-3.5 h-3.5 ${isUpdating ? 'animate-spin' : ''}`} />
+                    {isUpdating ? 'Оновлення…' : 'Оновити'}
+                  </button>
+                )}
+              </div>
+              <p className='text-sm leading-relaxed'>Швидкий інструмент для ведення переклички. Всі дані зберігаються виключно на вашому пристрої.</p>
+            </div>
           </div>
         </section>
 
