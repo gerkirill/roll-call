@@ -197,7 +197,7 @@ export function ShareAppDialog({ appUrl, isDevelopmentUrl, onClose, onShowToast 
               type='button'
               onClick={() => { void handleShare(); }}
               disabled={isSharing}
-              className='inline-flex min-h-16 min-w-0 flex-col items-center justify-center gap-1 rounded-xl bg-primary px-1.5 py-2 text-xs font-semibold text-primary-foreground active-elevate disabled:pointer-events-none disabled:opacity-60'
+              className='inline-flex min-h-16 min-w-0 flex-col items-center justify-center gap-1 rounded-xl bg-secondary px-1.5 py-2 text-xs font-semibold active-elevate disabled:pointer-events-none disabled:opacity-60'
             >
               <Share2 className='h-5 w-5 shrink-0' />
               <span className='max-w-full truncate'>{isSharing ? 'Відкриття…' : 'Поділитися'}</span>
