@@ -1,7 +1,8 @@
-import { useCallback, useEffect, useRef, useState, type ReactNode } from 'react';
-import { Binary, Copy, Download, Upload, Share2, Link2, QrCode, ClipboardPaste, Trash2, Info, X, RefreshCw } from 'lucide-react';
-import { QRCodeSVG } from 'qrcode.react';
+import { useCallback, useEffect, useRef, useState } from 'react';
+import { Binary, Download, Upload, Share2, ClipboardPaste, Trash2, X } from 'lucide-react';
 import { Layout } from '@/components/Layout';
+import { AboutSection } from '@/components/settings/AboutSection';
+import { SettingsRow } from '@/components/settings/SettingsRow';
 import { useImportExport } from '@/hooks/useImportExport';
 import { useAppData } from '@/hooks/useAppData';
 import { applyPwaUpdate, usePwaUpdate } from '@/pwaUpdate';
@@ -36,11 +37,6 @@ function getStoredTextExportFormat(): TextExportFormat {
   }
 }
 
-function getAppUrl(): string {
-  if (typeof window === 'undefined') return '';
-  return new URL(import.meta.env.BASE_URL, window.location.origin).toString();
-}
-
 function legacyCopy(text: string): CopyResult {
   let textarea: HTMLTextAreaElement | null = null;
   try {
@@ -63,34 +59,6 @@ function legacyCopy(text: string): CopyResult {
   }
 }
 
-function SettingsRow(props: {
-  icon: ReactNode;
-  title: string;
-  subtitle: ReactNode;
-  onClick: () => void;
-  disabled?: boolean;
-  destructive?: boolean;
-  last?: boolean;
-}) {
-  const { icon, title, subtitle, onClick, disabled, destructive, last } = props;
-  return (
-    <button
-      type='button'
-      onClick={onClick}
-      disabled={disabled}
-      className={`w-full flex items-center gap-3 p-4 active-elevate text-left touch-manipulation disabled:opacity-60 disabled:pointer-events-none ${last ? '' : 'border-b border-border'}`}
-    >
-      <div className={`w-10 h-10 rounded-full flex items-center justify-center shrink-0 ${destructive ? 'bg-destructive/10 text-destructive' : 'bg-primary/10 text-primary'}`}>
-        {icon}
-      </div>
-      <div className='flex-1 min-w-0'>
-        <div className={`font-semibold ${destructive ? 'text-destructive' : ''}`}>{title}</div>
-        <div className='text-sm text-muted-foreground mt-0.5'>{subtitle}</div>
-      </div>
-    </button>
-  );
-}
-
 export default function SettingsPage() {
   const { exportData, importData, importFromString, clearData } = useImportExport();
   const { data } = useAppData();
@@ -103,19 +71,12 @@ export default function SettingsPage() {
   const [shareState, setShareState] = useState<ShareState>({ status: 'preparing' });
   const [isSharingText, setIsSharingText] = useState(false);
   const [isSharingFile, setIsSharingFile] = useState(false);
-  const [showAppShare, setShowAppShare] = useState(false);
-  const [showQrCode, setShowQrCode] = useState(false);
-  const [isSharingApp, setIsSharingApp] = useState(false);
   const [manualCopy, setManualCopy] = useState<string | null>(null);
   const [showPaste, setShowPaste] = useState(false);
   const [pasteValue, setPasteValue] = useState('');
   const [pasteError, setPasteError] = useState('');
   const [confirmClear, setConfirmClear] = useState(false);
   const [textExportFormat, setTextExportFormat] = useState<TextExportFormat>(getStoredTextExportFormat);
-
-  const appUrl = getAppUrl();
-  const isDevelopmentUrl = import.meta.env.DEV
-    || (typeof window !== 'undefined' && window.location.hostname.endsWith('.replit.dev'));
 
   const dismissToast = useCallback(() => {
     if (toastTimerRef.current !== null) window.clearTimeout(toastTimerRef.current);
@@ -132,30 +93,9 @@ export default function SettingsPage() {
     }, kind === 'error' ? 8000 : 4000);
   }, []);
 
-  const closeAppShare = useCallback(() => {
-    setShowAppShare(false);
-    setShowQrCode(false);
-  }, []);
-
   useEffect(() => () => {
     if (toastTimerRef.current !== null) window.clearTimeout(toastTimerRef.current);
   }, []);
-
-  useEffect(() => {
-    if (!showAppShare) return;
-
-    const previousOverflow = document.body.style.overflow;
-    const handleKeyDown = (event: KeyboardEvent) => {
-      if (event.key === 'Escape') closeAppShare();
-    };
-
-    document.body.style.overflow = 'hidden';
-    window.addEventListener('keydown', handleKeyDown);
-    return () => {
-      document.body.style.overflow = previousOverflow;
-      window.removeEventListener('keydown', handleKeyDown);
-    };
-  }, [closeAppShare, showAppShare]);
 
   const changeTextExportFormat = useCallback((format: TextExportFormat) => {
     setTextExportFormat(format);
@@ -255,77 +195,6 @@ export default function SettingsPage() {
     );
   };
 
-  const copyAppUrl = useCallback(async (shareError?: string): Promise<boolean> => {
-    let clipboardError: string | null = null;
-
-    if (window.isSecureContext && typeof navigator.clipboard?.writeText === 'function') {
-      try {
-        await navigator.clipboard.writeText(appUrl);
-        showToast(
-          'success',
-          shareError
-            ? `Системне надсилання недоступне, тому посилання скопійовано. ${shareError}`
-            : 'Посилання на додаток скопійовано.',
-        );
-        return true;
-      } catch (error) {
-        clipboardError = errorText(error);
-      }
-    } else {
-      clipboardError = window.isSecureContext
-        ? 'Clipboard API недоступний у цьому браузері або WebView'
-        : 'сторінка відкрита без HTTPS';
-    }
-
-    const result = legacyCopy(appUrl);
-    if (result.ok) {
-      showToast(
-        'success',
-        shareError
-          ? `Системне надсилання недоступне, тому посилання скопійовано. ${shareError}`
-          : 'Посилання на додаток скопійовано.',
-      );
-      return true;
-    }
-
-    const details = [
-      shareError ? `системне надсилання: ${shareError}` : null,
-      clipboardError ? `копіювання: ${clipboardError}` : null,
-      `резервне копіювання: ${'message' in result ? result.message : 'невідома помилка'}`,
-    ].filter(Boolean).join('; ');
-    showToast('error', `Не вдалося скопіювати посилання (${details}). Виділіть адресу в діалозі вручну.`);
-    return false;
-  }, [appUrl, showToast]);
-
-  const handleAppShare = async () => {
-    if (isSharingApp) return;
-    setIsSharingApp(true);
-
-    try {
-      if (!window.isSecureContext) {
-        await copyAppUrl('сторінка відкрита без HTTPS');
-        return;
-      }
-      if (typeof navigator.share !== 'function') {
-        await copyAppUrl('Web Share API недоступний у цьому браузері або WebView');
-        return;
-      }
-
-      await navigator.share({
-        title: 'Перекличка',
-        text: 'Перекличка — додаток для ведення переклички особового складу',
-        url: appUrl,
-      });
-      closeAppShare();
-      showToast('success', 'Посилання передано через системне меню надсилання.');
-    } catch (error) {
-      if (error instanceof DOMException && error.name === 'AbortError') return;
-      await copyAppUrl(errorText(error));
-    } finally {
-      setIsSharingApp(false);
-    }
-  };
-
   const handleFileShare = async () => {
     if (isSharingFile) return;
     setIsSharingFile(true);
@@ -409,138 +278,12 @@ export default function SettingsPage() {
           </div>
         )}
 
-        {showAppShare && (
-          <div className='fixed inset-0 z-[60] flex items-end justify-center pt-[calc(0.5rem+env(safe-area-inset-top))] md:items-center md:p-4'>
-            <button
-              type='button'
-              aria-label='Закрити діалог поширення'
-              onClick={closeAppShare}
-              className='absolute inset-0 bg-black/60'
-            />
-            <div
-              role='dialog'
-              aria-modal='true'
-              aria-labelledby='share-app-title'
-              className='relative flex max-h-[calc(100dvh-0.5rem-env(safe-area-inset-top))] w-full max-w-md flex-col overflow-hidden rounded-t-3xl border border-border bg-card shadow-2xl md:max-h-[calc(100dvh-2rem)] md:rounded-3xl'
-            >
-              <div className='min-h-0 flex-1 overflow-y-auto overscroll-contain p-5 pb-4'>
-                <div className='flex items-start justify-between gap-3'>
-                  <h3 id='share-app-title' className='text-lg font-bold'>Поділитися додатком</h3>
-                  <button
-                    type='button'
-                    onClick={closeAppShare}
-                    aria-label='Закрити'
-                    className='flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-secondary active-elevate'
-                  >
-                    <X className='h-4 w-4' />
-                  </button>
-                </div>
-
-                {isDevelopmentUrl && (
-                  <div className='mt-4 rounded-xl border border-primary/30 bg-primary/10 px-3 py-2 text-sm'>
-                    Це тестова адреса. У Replit вона може змінитися або перестати працювати після завершення development-сесії.
-                  </div>
-                )}
-
-                <div className='mt-4 rounded-xl border border-border bg-background p-3'>
-                  <a
-                    href={appUrl}
-                    target='_blank'
-                    rel='noreferrer'
-                    className='block break-all text-sm font-medium text-primary underline decoration-primary/40 underline-offset-2'
-                  >
-                    {appUrl}
-                  </a>
-                </div>
-
-                {showQrCode && (
-                  <div className='mt-4 flex flex-col items-center gap-3 rounded-2xl bg-white p-4 text-black'>
-                    <QRCodeSVG
-                      value={appUrl}
-                      size={220}
-                      level='M'
-                      bgColor='#FFFFFF'
-                      fgColor='#000000'
-                      title='QR-код із посиланням на додаток «Перекличка»'
-                      className='h-auto max-w-full'
-                      style={{ width: 'min(220px, 50dvh)' }}
-                    />
-                    <p className='text-center text-xs text-black/70'>Відскануйте камерою іншого пристрою.</p>
-                  </div>
-                )}
-              </div>
-
-              <div className='shrink-0 border-t border-border bg-card p-3 pb-[calc(0.75rem+env(safe-area-inset-bottom))] md:pb-3'>
-                <div className='grid grid-cols-3 gap-2'>
-                  <button
-                    type='button'
-                    onClick={() => { void handleAppShare(); }}
-                    disabled={isSharingApp}
-                    className='inline-flex min-h-16 min-w-0 flex-col items-center justify-center gap-1 rounded-xl bg-primary px-1.5 py-2 text-xs font-semibold text-primary-foreground active-elevate disabled:pointer-events-none disabled:opacity-60'
-                  >
-                    <Share2 className='h-5 w-5 shrink-0' />
-                    <span className='max-w-full truncate'>{isSharingApp ? 'Відкриття…' : 'Поділитися'}</span>
-                  </button>
-                  <button
-                    type='button'
-                    aria-pressed={showQrCode}
-                    onClick={() => setShowQrCode(value => !value)}
-                    className={`inline-flex min-h-16 min-w-0 flex-col items-center justify-center gap-1 rounded-xl px-1.5 py-2 text-xs font-semibold active-elevate ${showQrCode ? 'bg-primary text-primary-foreground' : 'bg-secondary'}`}
-                  >
-                    <QrCode className='h-5 w-5 shrink-0' />
-                    <span className='max-w-full truncate'>{showQrCode ? 'Сховати QR' : 'QR-код'}</span>
-                  </button>
-                  <button
-                    type='button'
-                    onClick={() => { void copyAppUrl(); }}
-                    className='inline-flex min-h-16 min-w-0 flex-col items-center justify-center gap-1 rounded-xl bg-secondary px-1.5 py-2 text-xs font-semibold active-elevate'
-                  >
-                    <Copy className='h-5 w-5 shrink-0' />
-                    <span className='max-w-full truncate'>Копіювати</span>
-                  </button>
-                </div>
-              </div>
-            </div>
-          </div>
-        )}
-
-        <section className='flex flex-col gap-3'>
-          <h2 className='text-sm font-bold text-muted-foreground uppercase tracking-wider px-1'>Про додаток</h2>
-          <div className='bg-card border border-border rounded-2xl p-4 shadow-sm flex items-start gap-4'>
-            <div className='w-12 h-12 rounded-2xl bg-primary flex items-center justify-center shrink-0'><Info className='w-6 h-6 text-primary-foreground' /></div>
-            <div className='flex-1 min-w-0'>
-              <div className='font-bold text-lg mb-1'>Перекличка</div>
-              <div className='flex items-center justify-between gap-3 mb-3'>
-                <div className='min-w-0'>
-                  <div className='text-sm text-muted-foreground'>Версія 1.0.17</div>
-                  {updateAvailable && <div aria-live='polite' className='text-xs font-semibold text-primary mt-0.5'>Доступна нова версія</div>}
-                </div>
-                {updateAvailable && (
-                  <button
-                    type='button'
-                    onClick={applyPwaUpdate}
-                    disabled={isUpdating}
-                    aria-label='Оновити застосунок до нової версії'
-                    className='inline-flex shrink-0 items-center gap-1.5 rounded-lg bg-primary px-2.5 py-1.5 text-xs font-semibold text-primary-foreground active-elevate touch-manipulation disabled:opacity-60 disabled:pointer-events-none'
-                  >
-                    <RefreshCw className={`w-3.5 h-3.5 ${isUpdating ? 'animate-spin' : ''}`} />
-                    {isUpdating ? 'Оновлення…' : 'Оновити'}
-                  </button>
-                )}
-              </div>
-              <p className='text-sm leading-relaxed'>Швидкий інструмент для ведення переклички. Всі дані зберігаються виключно на вашому пристрої.</p>
-            </div>
-          </div>
-          <div className='bg-card border border-border rounded-2xl overflow-hidden shadow-sm'>
-            <SettingsRow
-              icon={<Link2 className='w-5 h-5' />}
-              title='Поділитися додатком'
-              subtitle={<span className='block truncate'>{appUrl}</span>}
-              onClick={() => setShowAppShare(true)}
-              last
-            />
-          </div>
-        </section>
+        <AboutSection
+          updateAvailable={updateAvailable}
+          isUpdating={isUpdating}
+          onApplyUpdate={applyPwaUpdate}
+          onShowToast={showToast}
+        />
 
         <section className='flex flex-col gap-3'>
           <h2 className='text-sm font-bold text-muted-foreground uppercase tracking-wider px-1'>Резервне копіювання</h2>
