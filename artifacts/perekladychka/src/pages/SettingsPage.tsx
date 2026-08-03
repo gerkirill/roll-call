@@ -403,14 +403,14 @@ export default function SettingsPage() {
         <header className='py-2'><h1 className='text-2xl font-bold tracking-tight'>Налаштування</h1></header>
 
         {toast && (
-          <div role='alert' aria-live={toast.kind === 'error' ? 'assertive' : 'polite'} className={`fixed top-4 left-4 right-4 z-50 rounded-2xl px-4 py-3 text-sm font-medium shadow-lg flex gap-3 ${toast.kind === 'success' ? 'bg-primary text-primary-foreground' : 'bg-destructive text-destructive-foreground'}`}>
+          <div role='alert' aria-live={toast.kind === 'error' ? 'assertive' : 'polite'} className={`fixed top-4 left-4 right-4 z-[70] rounded-2xl px-4 py-3 text-sm font-medium shadow-lg flex gap-3 ${toast.kind === 'success' ? 'bg-primary text-primary-foreground' : 'bg-destructive text-destructive-foreground'}`}>
             <span className='flex-1 break-words'>{toast.message}</span>
             <button type='button' onClick={dismissToast} aria-label='Закрити повідомлення' className='w-7 h-7 shrink-0 flex items-center justify-center rounded-full bg-black/10'><X className='w-4 h-4' /></button>
           </div>
         )}
 
         {showAppShare && (
-          <div className='fixed inset-0 z-40 flex items-end justify-center md:items-center md:p-4'>
+          <div className='fixed inset-0 z-[60] flex items-end justify-center pt-[calc(0.5rem+env(safe-area-inset-top))] md:items-center md:p-4'>
             <button
               type='button'
               aria-label='Закрити діалог поширення'
@@ -421,78 +421,84 @@ export default function SettingsPage() {
               role='dialog'
               aria-modal='true'
               aria-labelledby='share-app-title'
-              className='relative max-h-[calc(100dvh-1rem)] w-full max-w-md overflow-y-auto rounded-t-3xl border border-border bg-card p-5 pb-[calc(1.25rem+env(safe-area-inset-bottom))] shadow-2xl md:rounded-3xl md:pb-5'
+              className='relative flex max-h-[calc(100dvh-0.5rem-env(safe-area-inset-top))] w-full max-w-md flex-col overflow-hidden rounded-t-3xl border border-border bg-card shadow-2xl md:max-h-[calc(100dvh-2rem)] md:rounded-3xl'
             >
-              <div className='flex items-start justify-between gap-3'>
-                <h3 id='share-app-title' className='text-lg font-bold'>Поділитися додатком</h3>
-                <button
-                  type='button'
-                  onClick={closeAppShare}
-                  aria-label='Закрити'
-                  className='flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-secondary active-elevate'
-                >
-                  <X className='h-4 w-4' />
-                </button>
+              <div className='min-h-0 flex-1 overflow-y-auto overscroll-contain p-5 pb-4'>
+                <div className='flex items-start justify-between gap-3'>
+                  <h3 id='share-app-title' className='text-lg font-bold'>Поділитися додатком</h3>
+                  <button
+                    type='button'
+                    onClick={closeAppShare}
+                    aria-label='Закрити'
+                    className='flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-secondary active-elevate'
+                  >
+                    <X className='h-4 w-4' />
+                  </button>
+                </div>
+
+                {isDevelopmentUrl && (
+                  <div className='mt-4 rounded-xl border border-primary/30 bg-primary/10 px-3 py-2 text-sm'>
+                    Це тестова адреса. У Replit вона може змінитися або перестати працювати після завершення development-сесії.
+                  </div>
+                )}
+
+                <div className='mt-4 rounded-xl border border-border bg-background p-3'>
+                  <a
+                    href={appUrl}
+                    target='_blank'
+                    rel='noreferrer'
+                    className='block break-all text-sm font-medium text-primary underline decoration-primary/40 underline-offset-2'
+                  >
+                    {appUrl}
+                  </a>
+                </div>
+
+                {showQrCode && (
+                  <div className='mt-4 flex flex-col items-center gap-3 rounded-2xl bg-white p-4 text-black'>
+                    <QRCodeSVG
+                      value={appUrl}
+                      size={220}
+                      level='M'
+                      bgColor='#FFFFFF'
+                      fgColor='#000000'
+                      title='QR-код із посиланням на додаток «Перекличка»'
+                      className='h-auto max-w-full'
+                      style={{ width: 'min(220px, 50dvh)' }}
+                    />
+                    <p className='text-center text-xs text-black/70'>Відскануйте камерою іншого пристрою.</p>
+                  </div>
+                )}
               </div>
 
-              {isDevelopmentUrl && (
-                <div className='mt-4 rounded-xl border border-primary/30 bg-primary/10 px-3 py-2 text-sm'>
-                  Це тестова адреса. У Replit вона може змінитися або перестати працювати після завершення development-сесії.
+              <div className='shrink-0 border-t border-border bg-card p-3 pb-[calc(0.75rem+env(safe-area-inset-bottom))] md:pb-3'>
+                <div className='grid grid-cols-3 gap-2'>
+                  <button
+                    type='button'
+                    onClick={() => { void handleAppShare(); }}
+                    disabled={isSharingApp}
+                    className='inline-flex min-h-16 min-w-0 flex-col items-center justify-center gap-1 rounded-xl bg-primary px-1.5 py-2 text-xs font-semibold text-primary-foreground active-elevate disabled:pointer-events-none disabled:opacity-60'
+                  >
+                    <Share2 className='h-5 w-5 shrink-0' />
+                    <span className='max-w-full truncate'>{isSharingApp ? 'Відкриття…' : 'Поділитися'}</span>
+                  </button>
+                  <button
+                    type='button'
+                    aria-pressed={showQrCode}
+                    onClick={() => setShowQrCode(value => !value)}
+                    className={`inline-flex min-h-16 min-w-0 flex-col items-center justify-center gap-1 rounded-xl px-1.5 py-2 text-xs font-semibold active-elevate ${showQrCode ? 'bg-primary text-primary-foreground' : 'bg-secondary'}`}
+                  >
+                    <QrCode className='h-5 w-5 shrink-0' />
+                    <span className='max-w-full truncate'>{showQrCode ? 'Сховати QR' : 'QR-код'}</span>
+                  </button>
+                  <button
+                    type='button'
+                    onClick={() => { void copyAppUrl(); }}
+                    className='inline-flex min-h-16 min-w-0 flex-col items-center justify-center gap-1 rounded-xl bg-secondary px-1.5 py-2 text-xs font-semibold active-elevate'
+                  >
+                    <Copy className='h-5 w-5 shrink-0' />
+                    <span className='max-w-full truncate'>Копіювати</span>
+                  </button>
                 </div>
-              )}
-
-              <div className='mt-4 rounded-xl border border-border bg-background p-3'>
-                <a
-                  href={appUrl}
-                  target='_blank'
-                  rel='noreferrer'
-                  className='block break-all text-sm font-medium text-primary underline decoration-primary/40 underline-offset-2'
-                >
-                  {appUrl}
-                </a>
-              </div>
-
-              {showQrCode && (
-                <div className='mt-4 flex flex-col items-center gap-3 rounded-2xl bg-white p-4 text-black'>
-                  <QRCodeSVG
-                    value={appUrl}
-                    size={220}
-                    level='M'
-                    bgColor='#FFFFFF'
-                    fgColor='#000000'
-                    title='QR-код із посиланням на додаток «Перекличка»'
-                  />
-                  <p className='text-center text-xs text-black/70'>Відскануйте камерою іншого пристрою.</p>
-                </div>
-              )}
-
-              <div className='mt-4 grid grid-cols-3 gap-2'>
-                <button
-                  type='button'
-                  onClick={() => { void handleAppShare(); }}
-                  disabled={isSharingApp}
-                  className='inline-flex min-h-16 flex-col items-center justify-center gap-1 rounded-xl bg-primary px-2 py-2 text-xs font-semibold text-primary-foreground active-elevate disabled:pointer-events-none disabled:opacity-60'
-                >
-                  <Share2 className='h-5 w-5' />
-                  {isSharingApp ? 'Відкриття…' : 'Поділитися'}
-                </button>
-                <button
-                  type='button'
-                  aria-pressed={showQrCode}
-                  onClick={() => setShowQrCode(value => !value)}
-                  className={`inline-flex min-h-16 flex-col items-center justify-center gap-1 rounded-xl px-2 py-2 text-xs font-semibold active-elevate ${showQrCode ? 'bg-primary text-primary-foreground' : 'bg-secondary'}`}
-                >
-                  <QrCode className='h-5 w-5' />
-                  {showQrCode ? 'Сховати QR' : 'QR-код'}
-                </button>
-                <button
-                  type='button'
-                  onClick={() => { void copyAppUrl(); }}
-                  className='inline-flex min-h-16 flex-col items-center justify-center gap-1 rounded-xl bg-secondary px-2 py-2 text-xs font-semibold active-elevate'
-                >
-                  <Copy className='h-5 w-5' />
-                  Копіювати
-                </button>
               </div>
             </div>
           </div>
@@ -506,7 +512,7 @@ export default function SettingsPage() {
               <div className='font-bold text-lg mb-1'>Перекличка</div>
               <div className='flex items-center justify-between gap-3 mb-3'>
                 <div className='min-w-0'>
-                  <div className='text-sm text-muted-foreground'>Версія 1.0.16</div>
+                  <div className='text-sm text-muted-foreground'>Версія 1.0.17</div>
                   {updateAvailable && <div aria-live='polite' className='text-xs font-semibold text-primary mt-0.5'>Доступна нова версія</div>}
                 </div>
                 {updateAvailable && (
