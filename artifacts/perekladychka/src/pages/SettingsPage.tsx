@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useRef, useState, type ReactNode } from 'react';
-import { Binary, Copy, Download, Upload, Share2, Link2, ClipboardPaste, Trash2, Info, X, RefreshCw } from 'lucide-react';
+import { Binary, Copy, Download, Upload, Share2, Link2, QrCode, ClipboardPaste, Trash2, Info, X, RefreshCw } from 'lucide-react';
+import { QRCodeSVG } from 'qrcode.react';
 import { Layout } from '@/components/Layout';
 import { useImportExport } from '@/hooks/useImportExport';
 import { useAppData } from '@/hooks/useAppData';
@@ -103,6 +104,7 @@ export default function SettingsPage() {
   const [isSharingText, setIsSharingText] = useState(false);
   const [isSharingFile, setIsSharingFile] = useState(false);
   const [showAppShare, setShowAppShare] = useState(false);
+  const [showQrCode, setShowQrCode] = useState(false);
   const [isSharingApp, setIsSharingApp] = useState(false);
   const [manualCopy, setManualCopy] = useState<string | null>(null);
   const [showPaste, setShowPaste] = useState(false);
@@ -130,6 +132,11 @@ export default function SettingsPage() {
     }, kind === 'error' ? 8000 : 4000);
   }, []);
 
+  const closeAppShare = useCallback(() => {
+    setShowAppShare(false);
+    setShowQrCode(false);
+  }, []);
+
   useEffect(() => () => {
     if (toastTimerRef.current !== null) window.clearTimeout(toastTimerRef.current);
   }, []);
@@ -139,7 +146,7 @@ export default function SettingsPage() {
 
     const previousOverflow = document.body.style.overflow;
     const handleKeyDown = (event: KeyboardEvent) => {
-      if (event.key === 'Escape') setShowAppShare(false);
+      if (event.key === 'Escape') closeAppShare();
     };
 
     document.body.style.overflow = 'hidden';
@@ -148,7 +155,7 @@ export default function SettingsPage() {
       document.body.style.overflow = previousOverflow;
       window.removeEventListener('keydown', handleKeyDown);
     };
-  }, [showAppShare]);
+  }, [closeAppShare, showAppShare]);
 
   const changeTextExportFormat = useCallback((format: TextExportFormat) => {
     setTextExportFormat(format);
@@ -309,7 +316,7 @@ export default function SettingsPage() {
         text: 'Перекличка — додаток для ведення переклички особового складу',
         url: appUrl,
       });
-      setShowAppShare(false);
+      closeAppShare();
       showToast('success', 'Посилання передано через системне меню надсилання.');
     } catch (error) {
       if (error instanceof DOMException && error.name === 'AbortError') return;
@@ -407,23 +414,20 @@ export default function SettingsPage() {
             <button
               type='button'
               aria-label='Закрити діалог поширення'
-              onClick={() => setShowAppShare(false)}
+              onClick={closeAppShare}
               className='absolute inset-0 bg-black/60'
             />
             <div
               role='dialog'
               aria-modal='true'
               aria-labelledby='share-app-title'
-              className='relative w-full max-w-md rounded-t-3xl border border-border bg-card p-5 pb-[calc(1.25rem+env(safe-area-inset-bottom))] shadow-2xl md:rounded-3xl md:pb-5'
+              className='relative max-h-[calc(100dvh-1rem)] w-full max-w-md overflow-y-auto rounded-t-3xl border border-border bg-card p-5 pb-[calc(1.25rem+env(safe-area-inset-bottom))] shadow-2xl md:rounded-3xl md:pb-5'
             >
               <div className='flex items-start justify-between gap-3'>
-                <div>
-                  <h3 id='share-app-title' className='text-lg font-bold'>Поділитися додатком</h3>
-                  <p className='mt-1 text-sm text-muted-foreground'>Відкрити «Перекличку» у браузері або встановити як PWA.</p>
-                </div>
+                <h3 id='share-app-title' className='text-lg font-bold'>Поділитися додатком</h3>
                 <button
                   type='button'
-                  onClick={() => setShowAppShare(false)}
+                  onClick={closeAppShare}
                   aria-label='Закрити'
                   className='flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-secondary active-elevate'
                 >
@@ -448,23 +452,46 @@ export default function SettingsPage() {
                 </a>
               </div>
 
-              <div className='mt-4 grid grid-cols-1 gap-2 sm:grid-cols-2'>
-                <button
-                  type='button'
-                  onClick={() => { void copyAppUrl(); }}
-                  className='inline-flex h-12 items-center justify-center gap-2 rounded-xl bg-secondary px-4 font-semibold active-elevate'
-                >
-                  <Copy className='h-5 w-5' />
-                  Копіювати
-                </button>
+              {showQrCode && (
+                <div className='mt-4 flex flex-col items-center gap-3 rounded-2xl bg-white p-4 text-black'>
+                  <QRCodeSVG
+                    value={appUrl}
+                    size={220}
+                    level='M'
+                    bgColor='#FFFFFF'
+                    fgColor='#000000'
+                    title='QR-код із посиланням на додаток «Перекличка»'
+                  />
+                  <p className='text-center text-xs text-black/70'>Відскануйте камерою іншого пристрою.</p>
+                </div>
+              )}
+
+              <div className='mt-4 grid grid-cols-3 gap-2'>
                 <button
                   type='button'
                   onClick={() => { void handleAppShare(); }}
                   disabled={isSharingApp}
-                  className='inline-flex h-12 items-center justify-center gap-2 rounded-xl bg-primary px-4 font-semibold text-primary-foreground active-elevate disabled:pointer-events-none disabled:opacity-60'
+                  className='inline-flex min-h-16 flex-col items-center justify-center gap-1 rounded-xl bg-primary px-2 py-2 text-xs font-semibold text-primary-foreground active-elevate disabled:pointer-events-none disabled:opacity-60'
                 >
                   <Share2 className='h-5 w-5' />
-                  {isSharingApp ? 'Відкриття меню…' : 'Поділитися'}
+                  {isSharingApp ? 'Відкриття…' : 'Поділитися'}
+                </button>
+                <button
+                  type='button'
+                  aria-pressed={showQrCode}
+                  onClick={() => setShowQrCode(value => !value)}
+                  className={`inline-flex min-h-16 flex-col items-center justify-center gap-1 rounded-xl px-2 py-2 text-xs font-semibold active-elevate ${showQrCode ? 'bg-primary text-primary-foreground' : 'bg-secondary'}`}
+                >
+                  <QrCode className='h-5 w-5' />
+                  {showQrCode ? 'Сховати QR' : 'QR-код'}
+                </button>
+                <button
+                  type='button'
+                  onClick={() => { void copyAppUrl(); }}
+                  className='inline-flex min-h-16 flex-col items-center justify-center gap-1 rounded-xl bg-secondary px-2 py-2 text-xs font-semibold active-elevate'
+                >
+                  <Copy className='h-5 w-5' />
+                  Копіювати
                 </button>
               </div>
             </div>
@@ -479,7 +506,7 @@ export default function SettingsPage() {
               <div className='font-bold text-lg mb-1'>Перекличка</div>
               <div className='flex items-center justify-between gap-3 mb-3'>
                 <div className='min-w-0'>
-                  <div className='text-sm text-muted-foreground'>Версія 1.0.15</div>
+                  <div className='text-sm text-muted-foreground'>Версія 1.0.16</div>
                   {updateAvailable && <div aria-live='polite' className='text-xs font-semibold text-primary mt-0.5'>Доступна нова версія</div>}
                 </div>
                 {updateAvailable && (
