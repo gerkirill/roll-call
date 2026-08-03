@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useRef, useState, type ReactNode } from 'react';
-import { Binary, Download, Upload, Share2, ClipboardPaste, Trash2, Info, X, RefreshCw } from 'lucide-react';
+import { Binary, Copy, Download, Upload, Share2, Link2, ClipboardPaste, Trash2, Info, X, RefreshCw } from 'lucide-react';
 import { Layout } from '@/components/Layout';
 import { useImportExport } from '@/hooks/useImportExport';
 import { useAppData } from '@/hooks/useAppData';
@@ -33,6 +33,11 @@ function getStoredTextExportFormat(): TextExportFormat {
   } catch {
     return 'base64';
   }
+}
+
+function getAppUrl(): string {
+  if (typeof window === 'undefined') return '';
+  return new URL(import.meta.env.BASE_URL, window.location.origin).toString();
 }
 
 function legacyCopy(text: string): CopyResult {
@@ -97,12 +102,18 @@ export default function SettingsPage() {
   const [shareState, setShareState] = useState<ShareState>({ status: 'preparing' });
   const [isSharingText, setIsSharingText] = useState(false);
   const [isSharingFile, setIsSharingFile] = useState(false);
+  const [showAppShare, setShowAppShare] = useState(false);
+  const [isSharingApp, setIsSharingApp] = useState(false);
   const [manualCopy, setManualCopy] = useState<string | null>(null);
   const [showPaste, setShowPaste] = useState(false);
   const [pasteValue, setPasteValue] = useState('');
   const [pasteError, setPasteError] = useState('');
   const [confirmClear, setConfirmClear] = useState(false);
   const [textExportFormat, setTextExportFormat] = useState<TextExportFormat>(getStoredTextExportFormat);
+
+  const appUrl = getAppUrl();
+  const isDevelopmentUrl = import.meta.env.DEV
+    || (typeof window !== 'undefined' && window.location.hostname.endsWith('.replit.dev'));
 
   const dismissToast = useCallback(() => {
     if (toastTimerRef.current !== null) window.clearTimeout(toastTimerRef.current);
@@ -122,6 +133,22 @@ export default function SettingsPage() {
   useEffect(() => () => {
     if (toastTimerRef.current !== null) window.clearTimeout(toastTimerRef.current);
   }, []);
+
+  useEffect(() => {
+    if (!showAppShare) return;
+
+    const previousOverflow = document.body.style.overflow;
+    const handleKeyDown = (event: KeyboardEvent) => {
+      if (event.key === 'Escape') setShowAppShare(false);
+    };
+
+    document.body.style.overflow = 'hidden';
+    window.addEventListener('keydown', handleKeyDown);
+    return () => {
+      document.body.style.overflow = previousOverflow;
+      window.removeEventListener('keydown', handleKeyDown);
+    };
+  }, [showAppShare]);
 
   const changeTextExportFormat = useCallback((format: TextExportFormat) => {
     setTextExportFormat(format);
@@ -221,6 +248,77 @@ export default function SettingsPage() {
     );
   };
 
+  const copyAppUrl = useCallback(async (shareError?: string): Promise<boolean> => {
+    let clipboardError: string | null = null;
+
+    if (window.isSecureContext && typeof navigator.clipboard?.writeText === 'function') {
+      try {
+        await navigator.clipboard.writeText(appUrl);
+        showToast(
+          'success',
+          shareError
+            ? `Системне надсилання недоступне, тому посилання скопійовано. ${shareError}`
+            : 'Посилання на додаток скопійовано.',
+        );
+        return true;
+      } catch (error) {
+        clipboardError = errorText(error);
+      }
+    } else {
+      clipboardError = window.isSecureContext
+        ? 'Clipboard API недоступний у цьому браузері або WebView'
+        : 'сторінка відкрита без HTTPS';
+    }
+
+    const result = legacyCopy(appUrl);
+    if (result.ok) {
+      showToast(
+        'success',
+        shareError
+          ? `Системне надсилання недоступне, тому посилання скопійовано. ${shareError}`
+          : 'Посилання на додаток скопійовано.',
+      );
+      return true;
+    }
+
+    const details = [
+      shareError ? `системне надсилання: ${shareError}` : null,
+      clipboardError ? `копіювання: ${clipboardError}` : null,
+      `резервне копіювання: ${'message' in result ? result.message : 'невідома помилка'}`,
+    ].filter(Boolean).join('; ');
+    showToast('error', `Не вдалося скопіювати посилання (${details}). Виділіть адресу в діалозі вручну.`);
+    return false;
+  }, [appUrl, showToast]);
+
+  const handleAppShare = async () => {
+    if (isSharingApp) return;
+    setIsSharingApp(true);
+
+    try {
+      if (!window.isSecureContext) {
+        await copyAppUrl('сторінка відкрита без HTTPS');
+        return;
+      }
+      if (typeof navigator.share !== 'function') {
+        await copyAppUrl('Web Share API недоступний у цьому браузері або WebView');
+        return;
+      }
+
+      await navigator.share({
+        title: 'Перекличка',
+        text: 'Перекличка — додаток для ведення переклички особового складу',
+        url: appUrl,
+      });
+      setShowAppShare(false);
+      showToast('success', 'Посилання передано через системне меню надсилання.');
+    } catch (error) {
+      if (error instanceof DOMException && error.name === 'AbortError') return;
+      await copyAppUrl(errorText(error));
+    } finally {
+      setIsSharingApp(false);
+    }
+  };
+
   const handleFileShare = async () => {
     if (isSharingFile) return;
     setIsSharingFile(true);
@@ -304,6 +402,75 @@ export default function SettingsPage() {
           </div>
         )}
 
+        {showAppShare && (
+          <div className='fixed inset-0 z-40 flex items-end justify-center md:items-center md:p-4'>
+            <button
+              type='button'
+              aria-label='Закрити діалог поширення'
+              onClick={() => setShowAppShare(false)}
+              className='absolute inset-0 bg-black/60'
+            />
+            <div
+              role='dialog'
+              aria-modal='true'
+              aria-labelledby='share-app-title'
+              className='relative w-full max-w-md rounded-t-3xl border border-border bg-card p-5 pb-[calc(1.25rem+env(safe-area-inset-bottom))] shadow-2xl md:rounded-3xl md:pb-5'
+            >
+              <div className='flex items-start justify-between gap-3'>
+                <div>
+                  <h3 id='share-app-title' className='text-lg font-bold'>Поділитися додатком</h3>
+                  <p className='mt-1 text-sm text-muted-foreground'>Відкрити «Перекличку» у браузері або встановити як PWA.</p>
+                </div>
+                <button
+                  type='button'
+                  onClick={() => setShowAppShare(false)}
+                  aria-label='Закрити'
+                  className='flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-secondary active-elevate'
+                >
+                  <X className='h-4 w-4' />
+                </button>
+              </div>
+
+              {isDevelopmentUrl && (
+                <div className='mt-4 rounded-xl border border-primary/30 bg-primary/10 px-3 py-2 text-sm'>
+                  Це тестова адреса. У Replit вона може змінитися або перестати працювати після завершення development-сесії.
+                </div>
+              )}
+
+              <div className='mt-4 rounded-xl border border-border bg-background p-3'>
+                <a
+                  href={appUrl}
+                  target='_blank'
+                  rel='noreferrer'
+                  className='block break-all text-sm font-medium text-primary underline decoration-primary/40 underline-offset-2'
+                >
+                  {appUrl}
+                </a>
+              </div>
+
+              <div className='mt-4 grid grid-cols-1 gap-2 sm:grid-cols-2'>
+                <button
+                  type='button'
+                  onClick={() => { void copyAppUrl(); }}
+                  className='inline-flex h-12 items-center justify-center gap-2 rounded-xl bg-secondary px-4 font-semibold active-elevate'
+                >
+                  <Copy className='h-5 w-5' />
+                  Копіювати
+                </button>
+                <button
+                  type='button'
+                  onClick={() => { void handleAppShare(); }}
+                  disabled={isSharingApp}
+                  className='inline-flex h-12 items-center justify-center gap-2 rounded-xl bg-primary px-4 font-semibold text-primary-foreground active-elevate disabled:pointer-events-none disabled:opacity-60'
+                >
+                  <Share2 className='h-5 w-5' />
+                  {isSharingApp ? 'Відкриття меню…' : 'Поділитися'}
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
+
         <section className='flex flex-col gap-3'>
           <h2 className='text-sm font-bold text-muted-foreground uppercase tracking-wider px-1'>Про додаток</h2>
           <div className='bg-card border border-border rounded-2xl p-4 shadow-sm flex items-start gap-4'>
@@ -312,7 +479,7 @@ export default function SettingsPage() {
               <div className='font-bold text-lg mb-1'>Перекличка</div>
               <div className='flex items-center justify-between gap-3 mb-3'>
                 <div className='min-w-0'>
-                  <div className='text-sm text-muted-foreground'>Версія 1.0.14</div>
+                  <div className='text-sm text-muted-foreground'>Версія 1.0.15</div>
                   {updateAvailable && <div aria-live='polite' className='text-xs font-semibold text-primary mt-0.5'>Доступна нова версія</div>}
                 </div>
                 {updateAvailable && (
@@ -330,6 +497,15 @@ export default function SettingsPage() {
               </div>
               <p className='text-sm leading-relaxed'>Швидкий інструмент для ведення переклички. Всі дані зберігаються виключно на вашому пристрої.</p>
             </div>
+          </div>
+          <div className='bg-card border border-border rounded-2xl overflow-hidden shadow-sm'>
+            <SettingsRow
+              icon={<Link2 className='w-5 h-5' />}
+              title='Поділитися додатком'
+              subtitle={<span className='block truncate'>{appUrl}</span>}
+              onClick={() => setShowAppShare(true)}
+              last
+            />
           </div>
         </section>
 
