@@ -1,6 +1,8 @@
-import { useCallback, useEffect, useRef, useState, type ReactNode } from 'react';
-import { Binary, Download, Upload, Share2, ClipboardPaste, Trash2, Info, X, RefreshCw } from 'lucide-react';
+import { useCallback, useEffect, useRef, useState } from 'react';
+import { Binary, Download, Upload, Share2, ClipboardPaste, Trash2, X } from 'lucide-react';
 import { Layout } from '@/components/Layout';
+import { AboutSection } from '@/components/settings/AboutSection';
+import { SettingsRow } from '@/components/settings/SettingsRow';
 import { useImportExport } from '@/hooks/useImportExport';
 import { useAppData } from '@/hooks/useAppData';
 import { applyPwaUpdate, usePwaUpdate } from '@/pwaUpdate';
@@ -55,34 +57,6 @@ function legacyCopy(text: string): CopyResult {
   } finally {
     textarea?.remove();
   }
-}
-
-function SettingsRow(props: {
-  icon: ReactNode;
-  title: string;
-  subtitle: ReactNode;
-  onClick: () => void;
-  disabled?: boolean;
-  destructive?: boolean;
-  last?: boolean;
-}) {
-  const { icon, title, subtitle, onClick, disabled, destructive, last } = props;
-  return (
-    <button
-      type='button'
-      onClick={onClick}
-      disabled={disabled}
-      className={`w-full flex items-center gap-3 p-4 active-elevate text-left touch-manipulation disabled:opacity-60 disabled:pointer-events-none ${last ? '' : 'border-b border-border'}`}
-    >
-      <div className={`w-10 h-10 rounded-full flex items-center justify-center shrink-0 ${destructive ? 'bg-destructive/10 text-destructive' : 'bg-primary/10 text-primary'}`}>
-        {icon}
-      </div>
-      <div className='flex-1 min-w-0'>
-        <div className={`font-semibold ${destructive ? 'text-destructive' : ''}`}>{title}</div>
-        <div className='text-sm text-muted-foreground mt-0.5'>{subtitle}</div>
-      </div>
-    </button>
-  );
 }
 
 export default function SettingsPage() {
@@ -298,40 +272,18 @@ export default function SettingsPage() {
         <header className='py-2'><h1 className='text-2xl font-bold tracking-tight'>Налаштування</h1></header>
 
         {toast && (
-          <div role='alert' aria-live={toast.kind === 'error' ? 'assertive' : 'polite'} className={`fixed top-4 left-4 right-4 z-50 rounded-2xl px-4 py-3 text-sm font-medium shadow-lg flex gap-3 ${toast.kind === 'success' ? 'bg-primary text-primary-foreground' : 'bg-destructive text-destructive-foreground'}`}>
+          <div role='alert' aria-live={toast.kind === 'error' ? 'assertive' : 'polite'} className={`fixed top-4 left-4 right-4 z-[70] rounded-2xl px-4 py-3 text-sm font-medium shadow-lg flex gap-3 ${toast.kind === 'success' ? 'bg-primary text-primary-foreground' : 'bg-destructive text-destructive-foreground'}`}>
             <span className='flex-1 break-words'>{toast.message}</span>
             <button type='button' onClick={dismissToast} aria-label='Закрити повідомлення' className='w-7 h-7 shrink-0 flex items-center justify-center rounded-full bg-black/10'><X className='w-4 h-4' /></button>
           </div>
         )}
 
-        <section className='flex flex-col gap-3'>
-          <h2 className='text-sm font-bold text-muted-foreground uppercase tracking-wider px-1'>Про додаток</h2>
-          <div className='bg-card border border-border rounded-2xl p-4 shadow-sm flex items-start gap-4'>
-            <div className='w-12 h-12 rounded-2xl bg-primary flex items-center justify-center shrink-0'><Info className='w-6 h-6 text-primary-foreground' /></div>
-            <div className='flex-1 min-w-0'>
-              <div className='font-bold text-lg mb-1'>Перекличка</div>
-              <div className='flex items-center justify-between gap-3 mb-3'>
-                <div className='min-w-0'>
-                  <div className='text-sm text-muted-foreground'>Версія 1.0.14</div>
-                  {updateAvailable && <div aria-live='polite' className='text-xs font-semibold text-primary mt-0.5'>Доступна нова версія</div>}
-                </div>
-                {updateAvailable && (
-                  <button
-                    type='button'
-                    onClick={applyPwaUpdate}
-                    disabled={isUpdating}
-                    aria-label='Оновити застосунок до нової версії'
-                    className='inline-flex shrink-0 items-center gap-1.5 rounded-lg bg-primary px-2.5 py-1.5 text-xs font-semibold text-primary-foreground active-elevate touch-manipulation disabled:opacity-60 disabled:pointer-events-none'
-                  >
-                    <RefreshCw className={`w-3.5 h-3.5 ${isUpdating ? 'animate-spin' : ''}`} />
-                    {isUpdating ? 'Оновлення…' : 'Оновити'}
-                  </button>
-                )}
-              </div>
-              <p className='text-sm leading-relaxed'>Швидкий інструмент для ведення переклички. Всі дані зберігаються виключно на вашому пристрої.</p>
-            </div>
-          </div>
-        </section>
+        <AboutSection
+          updateAvailable={updateAvailable}
+          isUpdating={isUpdating}
+          onApplyUpdate={applyPwaUpdate}
+          onShowToast={showToast}
+        />
 
         <section className='flex flex-col gap-3'>
           <h2 className='text-sm font-bold text-muted-foreground uppercase tracking-wider px-1'>Резервне копіювання</h2>
