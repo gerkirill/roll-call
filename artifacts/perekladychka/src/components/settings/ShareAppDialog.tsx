@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useState } from 'react';
-import { Copy, QrCode, Share2, X } from 'lucide-react';
+import { Copy, Share2, X } from 'lucide-react';
 import { QRCodeSVG } from 'qrcode.react';
 
 type CopyResult = { ok: true } | { ok: false; message: string };
@@ -42,7 +42,6 @@ function legacyCopy(text: string): CopyResult {
 }
 
 export function ShareAppDialog({ appUrl, isDevelopmentUrl, onClose, onShowToast }: ShareAppDialogProps) {
-  const [showQrCode, setShowQrCode] = useState(false);
   const [isSharing, setIsSharing] = useState(false);
 
   useEffect(() => {
@@ -174,51 +173,38 @@ export function ShareAppDialog({ appUrl, isDevelopmentUrl, onClose, onShowToast 
             </a>
           </div>
 
-          {showQrCode && (
-            <div className='mt-4 flex flex-col items-center gap-3 rounded-2xl bg-white p-4 text-black'>
-              <QRCodeSVG
-                value={appUrl}
-                size={220}
-                level='M'
-                bgColor='#FFFFFF'
-                fgColor='#000000'
-                title='QR-код із посиланням на додаток «Перекличка»'
-                className='h-auto max-w-full'
-                style={{ width: 'min(220px, 50dvh)' }}
-              />
-              <p className='text-center text-xs text-black/70'>Відскануйте камерою іншого пристрою.</p>
-            </div>
-          )}
-        </div>
-
-        <div className='shrink-0 border-t border-border bg-card p-3 pb-[calc(0.75rem+env(safe-area-inset-bottom))] md:pb-3'>
-          <div className='grid grid-cols-3 gap-2'>
+          <div className='mt-2 grid grid-cols-2 gap-2'>
             <button
               type='button'
               onClick={() => { void handleShare(); }}
               disabled={isSharing}
-              className='inline-flex min-h-16 min-w-0 flex-col items-center justify-center gap-1 rounded-xl bg-secondary px-1.5 py-2 text-xs font-semibold active-elevate disabled:pointer-events-none disabled:opacity-60'
+              className='inline-flex min-h-12 min-w-0 items-center justify-center gap-2 rounded-xl bg-secondary px-3 py-2 text-sm font-semibold active-elevate disabled:pointer-events-none disabled:opacity-60'
             >
               <Share2 className='h-5 w-5 shrink-0' />
               <span className='max-w-full truncate'>{isSharing ? 'Відкриття…' : 'Поділитися'}</span>
             </button>
             <button
               type='button'
-              aria-pressed={showQrCode}
-              onClick={() => setShowQrCode(value => !value)}
-              className={`inline-flex min-h-16 min-w-0 flex-col items-center justify-center gap-1 rounded-xl px-1.5 py-2 text-xs font-semibold active-elevate ${showQrCode ? 'bg-primary text-primary-foreground' : 'bg-secondary'}`}
-            >
-              <QrCode className='h-5 w-5 shrink-0' />
-              <span className='max-w-full truncate'>{showQrCode ? 'Сховати QR' : 'QR-код'}</span>
-            </button>
-            <button
-              type='button'
               onClick={() => { void copyAppUrl(); }}
-              className='inline-flex min-h-16 min-w-0 flex-col items-center justify-center gap-1 rounded-xl bg-secondary px-1.5 py-2 text-xs font-semibold active-elevate'
+              className='inline-flex min-h-12 min-w-0 items-center justify-center gap-2 rounded-xl bg-secondary px-3 py-2 text-sm font-semibold active-elevate'
             >
               <Copy className='h-5 w-5 shrink-0' />
               <span className='max-w-full truncate'>Копіювати</span>
             </button>
+          </div>
+
+          <div className='mt-4 flex flex-col items-center gap-3 rounded-2xl bg-white p-4 text-black'>
+            <QRCodeSVG
+              value={appUrl}
+              size={220}
+              level='M'
+              bgColor='#FFFFFF'
+              fgColor='#000000'
+              title='QR-код із посиланням на додаток «Перекличка»'
+              className='h-auto max-w-full'
+              style={{ width: 'min(220px, 50dvh)' }}
+            />
+            <p className='text-center text-xs text-black/70'>Відскануйте камерою іншого пристрою.</p>
           </div>
         </div>
       </div>
