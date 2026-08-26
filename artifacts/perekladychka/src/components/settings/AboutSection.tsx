@@ -32,7 +32,7 @@ export function AboutSection({ updateAvailable, isUpdating, onApplyUpdate, onSho
             <div className='font-bold text-lg mb-1'>Перекличка</div>
             <div className='flex items-center justify-between gap-3 mb-3'>
               <div className='min-w-0'>
-                <div className='text-sm text-muted-foreground'>Версія 1.0.20</div>
+                <div className='text-sm text-muted-foreground'>Версія 1.0.21</div>
                 {updateAvailable && <div aria-live='polite' className='text-xs font-semibold text-primary mt-0.5'>Доступна нова версія</div>}
               </div>
               {updateAvailable && (
