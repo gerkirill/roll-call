@@ -1,0 +1,180 @@
+{
+  "soldiers": [
+    {
+      "id": "test-soldier-01",
+      "lastName": "Думка",
+      "firstName": "Ярослав Володимирович",
+      "updatedAt": "2026-01-01T10:00:00.000Z"
+    },
+    {
+      "id": "test-soldier-02",
+      "lastName": "Ке́кух",
+      "firstName": "Андрій Євгенійович",
+      "updatedAt": "2026-01-01T10:00:00.000Z"
+    },
+    {
+      "id": "test-soldier-03",
+      "lastName": "Ілюхін",
+      "firstName": "Володимир Миколайович",
+      "updatedAt": "2026-01-01T10:00:00.000Z"
+    },
+    {
+      "id": "test-soldier-04",
+      "lastName": "Музи́ка",
+      "firstName": "Річард Владиславович",
+      "updatedAt": "2026-01-01T10:00:00.000Z"
+    },
+    {
+      "id": "test-soldier-05",
+      "lastName": "Го́ра",
+      "firstName": "Ігор Васильович",
+      "updatedAt": "2026-01-01T10:00:00.000Z"
+    },
+    {
+      "id": "test-soldier-06",
+      "lastName": "Сібулатов",
+      "firstName": "Сергій Володимирович",
+      "updatedAt": "2026-01-01T10:00:00.000Z"
+    },
+    {
+      "id": "test-soldier-07",
+      "lastName": "Дутчак",
+      "firstName": "Володимир Васильович",
+      "updatedAt": "2026-01-01T10:00:00.000Z"
+    },
+    {
+      "id": "test-soldier-08",
+      "lastName": "Лонгус",
+      "firstName": "Василь Васильович",
+      "updatedAt": "2026-01-01T10:00:00.000Z"
+    },
+    {
+      "id": "test-soldier-09",
+      "lastName": "Дністрянський",
+      "firstName": "Петро Романович",
+      "updatedAt": "2026-01-01T10:00:00.000Z"
+    },
+    {
+      "id": "test-soldier-10",
+      "lastName": "Шишак",
+      "firstName": "Андрій Ярославович",
+      "updatedAt": "2026-01-01T10:00:00.000Z"
+    }
+  ],
+  "sessions": [
+    {
+      "id": "test-session-2h",
+      "startedAt": "2026-01-01T10:00:00.000Z",
+      "entries": [
+        {
+          "soldierId": "test-soldier-01",
+          "status": "present",
+          "timestamp": 4
+        },
+        {
+          "soldierId": "test-soldier-02",
+          "status": "present",
+          "timestamp": 7
+        },
+        {
+          "soldierId": "test-soldier-03",
+          "status": "duty_company",
+          "timestamp": 10
+        },
+        {
+          "soldierId": "test-soldier-04",
+          "status": "present",
+          "timestamp": 13
+        },
+        {
+          "soldierId": "test-soldier-05",
+          "status": "sick",
+          "timestamp": 16
+        },
+        {
+          "soldierId": "test-soldier-06",
+          "status": "present",
+          "timestamp": 19
+        },
+        {
+          "soldierId": "test-soldier-07",
+          "status": "present",
+          "timestamp": 22
+        },
+        {
+          "soldierId": "test-soldier-08",
+          "status": "absent",
+          "timestamp": 25
+        },
+        {
+          "soldierId": "test-soldier-09",
+          "status": "present",
+          "timestamp": 28
+        },
+        {
+          "soldierId": "test-soldier-10",
+          "status": "present",
+          "timestamp": 31
+        }
+      ],
+      "completedAt": "2026-01-01T10:05:00.000Z"
+    },
+    {
+      "id": "test-session-1h",
+      "startedAt": "2026-01-01T11:00:00.000Z",
+      "entries": [
+        {
+          "soldierId": "test-soldier-01",
+          "status": "present",
+          "timestamp": 3
+        },
+        {
+          "soldierId": "test-soldier-02",
+          "status": "duty_canteen",
+          "timestamp": 6
+        },
+        {
+          "soldierId": "test-soldier-03",
+          "status": "present",
+          "timestamp": 9
+        },
+        {
+          "soldierId": "test-soldier-04",
+          "status": "present",
+          "timestamp": 12
+        },
+        {
+          "soldierId": "test-soldier-05",
+          "status": "present",
+          "timestamp": 15
+        },
+        {
+          "soldierId": "test-soldier-06",
+          "status": "present",
+          "timestamp": 18
+        },
+        {
+          "soldierId": "test-soldier-07",
+          "status": "sick",
+          "timestamp": 21
+        },
+        {
+          "soldierId": "test-soldier-08",
+          "status": "present",
+          "timestamp": 24
+        },
+        {
+          "soldierId": "test-soldier-09",
+          "status": "present",
+          "timestamp": 27
+        },
+        {
+          "soldierId": "test-soldier-10",
+          "status": "present",
+          "timestamp": 30
+        }
+      ],
+      "completedAt": "2026-01-01T11:05:00.000Z"
+    }
+  ]
+}

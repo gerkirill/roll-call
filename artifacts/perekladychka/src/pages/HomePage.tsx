@@ -5,11 +5,36 @@ import { Users, Play, Clock, ChevronRight } from "lucide-react";
 import { useRoster } from "@/hooks/useRoster";
 import { useRollCall } from "@/hooks/useRollCall";
 import { Layout } from "@/components/Layout";
+import { useImportExport } from "@/hooks/useImportExport";
+import testDataFixture from "@/data/testData.json";
+import type { AppData } from "@/types";
+
+const TEST_DATA_LATEST_SESSION_OFFSET_MS = 60 * 60 * 1000;
+
+function buildTestData(now = Date.now()): AppData {
+  const fixture = testDataFixture as AppData;
+  const latestStartedAt = Math.max(...fixture.sessions.map(session => Date.parse(session.startedAt)));
+  const shiftMs = now - TEST_DATA_LATEST_SESSION_OFFSET_MS - latestStartedAt;
+  const shiftIso = (value: string) => new Date(Date.parse(value) + shiftMs).toISOString();
+
+  return {
+    soldiers: fixture.soldiers.map(soldier => ({
+      ...soldier,
+      updatedAt: soldier.updatedAt ? shiftIso(soldier.updatedAt) : undefined,
+    })),
+    sessions: fixture.sessions.map(session => ({
+      ...session,
+      startedAt: shiftIso(session.startedAt),
+      completedAt: session.completedAt ? shiftIso(session.completedAt) : undefined,
+    })),
+  };
+}
 
 export default function HomePage() {
   const [, setLocation] = useLocation();
   const { soldiers } = useRoster();
   const { currentSession, sessions, startSession } = useRollCall();
+  const { importData } = useImportExport();
 
   const completedSessions = sessions
     .filter(s => !!s.completedAt)
@@ -27,6 +52,15 @@ export default function HomePage() {
     }
   };
 
+  const handlePopulateTestData = async () => {
+    const file = new File(
+      [JSON.stringify(buildTestData())],
+      'test-data.json',
+      { type: 'application/json' },
+    );
+    await importData(file);
+  };
+
   return (
     <Layout>
       <div className="flex-1 p-4 md:p-6 flex flex-col gap-6">
@@ -36,17 +70,26 @@ export default function HomePage() {
         </header>
 
         {soldiers.length === 0 ? (
-          <div className="flex-1 flex flex-col items-center justify-center text-center p-6 border-2 border-dashed border-border rounded-2xl bg-card/50">
-            <div className="w-16 h-16 rounded-full bg-secondary flex items-center justify-center mb-4">
-              <Users className="w-8 h-8 text-muted-foreground" />
+          <div className="flex-1 flex flex-col text-center p-6 border-2 border-dashed border-border rounded-2xl bg-card/50">
+            <div className="flex-1 flex flex-col items-center justify-center">
+              <div className="w-16 h-16 rounded-full bg-secondary flex items-center justify-center mb-4">
+                <Users className="w-8 h-8 text-muted-foreground" />
+              </div>
+              <h2 className="text-xl font-semibold mb-2">Немає військовослужбовців</h2>
+              <p className="text-muted-foreground mb-6">Додайте особовий склад, щоб розпочати перекличку.</p>
+              <button
+                onClick={() => setLocation('/roster')}
+                className="px-6 py-3 bg-primary text-primary-foreground font-medium rounded-xl active-elevate transition-transform touch-manipulation shadow-sm"
+              >
+                Додати військовослужбовців
+              </button>
             </div>
-            <h2 className="text-xl font-semibold mb-2">Немає військовослужбовців</h2>
-            <p className="text-muted-foreground mb-6">Додайте особовий склад, щоб розпочати перекличку.</p>
             <button
-              onClick={() => setLocation('/roster')}
-              className="px-6 py-3 bg-primary text-primary-foreground font-medium rounded-xl active-elevate transition-transform touch-manipulation shadow-sm"
+              type="button"
+              onClick={() => { void handlePopulateTestData(); }}
+              className="mt-6 self-center text-sm text-muted-foreground underline underline-offset-4 decoration-muted-foreground/50 active:text-foreground touch-manipulation"
             >
-              Додати військовослужбовців
+              наповнити тестовими даними
             </button>
           </div>
         ) : (
