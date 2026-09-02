@@ -9,6 +9,7 @@ import RosterPage from '@/pages/RosterPage';
 import RollCallPage from '@/pages/RollCallPage';
 import HistoryPage from '@/pages/HistoryPage';
 import SettingsPage from '@/pages/SettingsPage';
+import FeaturesPage from '@/pages/FeaturesPage';
 
 const queryClient = new QueryClient();
 
@@ -21,6 +22,7 @@ function Router() {
       <Route path="/history" component={HistoryPage} />
       <Route path="/history/:id" component={HistoryPage} />
       <Route path="/settings" component={SettingsPage} />
+      <Route path="/features" component={FeaturesPage} />
       <Route component={NotFound} />
     </Switch>
   );
