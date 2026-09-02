@@ -1,5 +1,6 @@
 import { useCallback, useState } from 'react';
-import { Info, Link2, RefreshCw } from 'lucide-react';
+import { useLocation } from 'wouter';
+import { Info, Link2, ListChecks, RefreshCw } from 'lucide-react';
 import { SettingsRow } from './SettingsRow';
 import { ShareAppDialog } from './ShareAppDialog';
 
@@ -16,6 +17,7 @@ function getAppUrl(): string {
 }
 
 export function AboutSection({ updateAvailable, isUpdating, onApplyUpdate, onShowToast }: AboutSectionProps) {
+  const [, setLocation] = useLocation();
   const [showShareDialog, setShowShareDialog] = useState(false);
   const appUrl = getAppUrl();
   const isDevelopmentUrl = import.meta.env.DEV
@@ -32,7 +34,7 @@ export function AboutSection({ updateAvailable, isUpdating, onApplyUpdate, onSho
             <div className='font-bold text-lg mb-1'>Перекличка</div>
             <div className='flex items-center justify-between gap-3 mb-3'>
               <div className='min-w-0'>
-                <div className='text-sm text-muted-foreground'>Версія 1.0.21</div>
+                <div className='text-sm text-muted-foreground'>Версія 1.0.22</div>
                 {updateAvailable && <div aria-live='polite' className='text-xs font-semibold text-primary mt-0.5'>Доступна нова версія</div>}
               </div>
               {updateAvailable && (
@@ -52,6 +54,12 @@ export function AboutSection({ updateAvailable, isUpdating, onApplyUpdate, onSho
           </div>
         </div>
         <div className='bg-card border border-border rounded-2xl overflow-hidden shadow-sm'>
+          <SettingsRow
+            icon={<ListChecks className='w-5 h-5' />}
+            title='Можливості'
+            subtitle='Короткий огляд функцій застосунку'
+            onClick={() => setLocation('/features')}
+          />
           <SettingsRow
             icon={<Link2 className='w-5 h-5' />}
             title='Поділитися додатком'
