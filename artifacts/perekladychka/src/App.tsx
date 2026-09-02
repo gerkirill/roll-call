@@ -10,6 +10,7 @@ import RollCallPage from '@/pages/RollCallPage';
 import HistoryPage from '@/pages/HistoryPage';
 import SettingsPage from '@/pages/SettingsPage';
 import FeaturesPage from '@/pages/FeaturesPage';
+import ChangelogPage from '@/pages/ChangelogPage';
 
 const queryClient = new QueryClient();
 
@@ -23,6 +24,7 @@ function Router() {
       <Route path="/history/:id" component={HistoryPage} />
       <Route path="/settings" component={SettingsPage} />
       <Route path="/features" component={FeaturesPage} />
+      <Route path="/changelog" component={ChangelogPage} />
       <Route component={NotFound} />
     </Switch>
   );
