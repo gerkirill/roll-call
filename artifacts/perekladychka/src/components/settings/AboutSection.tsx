@@ -1,6 +1,6 @@
 import { useCallback, useState } from 'react';
 import { useLocation } from 'wouter';
-import { Info, Link2, ListChecks, RefreshCw } from 'lucide-react';
+import { History, Info, Link2, ListChecks, RefreshCw } from 'lucide-react';
 import { SettingsRow } from './SettingsRow';
 import { ShareAppDialog } from './ShareAppDialog';
 
@@ -34,7 +34,7 @@ export function AboutSection({ updateAvailable, isUpdating, onApplyUpdate, onSho
             <div className='font-bold text-lg mb-1'>Перекличка</div>
             <div className='flex items-center justify-between gap-3 mb-3'>
               <div className='min-w-0'>
-                <div className='text-sm text-muted-foreground'>Версія 1.0.22</div>
+                <div className='text-sm text-muted-foreground'>Версія 1.0.23</div>
                 {updateAvailable && <div aria-live='polite' className='text-xs font-semibold text-primary mt-0.5'>Доступна нова версія</div>}
               </div>
               {updateAvailable && (
@@ -59,6 +59,12 @@ export function AboutSection({ updateAvailable, isUpdating, onApplyUpdate, onSho
             title='Можливості'
             subtitle='Короткий огляд функцій застосунку'
             onClick={() => setLocation('/features')}
+          />
+          <SettingsRow
+            icon={<History className='w-5 h-5' />}
+            title='Журнал змін'
+            subtitle='Що нового в кожній версії'
+            onClick={() => setLocation('/changelog')}
           />
           <SettingsRow
             icon={<Link2 className='w-5 h-5' />}
