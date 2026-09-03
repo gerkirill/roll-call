@@ -76,27 +76,13 @@ export function getPwaInstallInstructions(): PwaInstallInstructions {
   const userAgent = window.navigator.userAgent;
   const isIos = /iPad|iPhone|iPod/.test(userAgent)
     || (window.navigator.platform === 'MacIntel' && window.navigator.maxTouchPoints > 1);
-  const isSafari = /Safari/.test(userAgent) && !/CriOS|FxiOS|EdgiOS|OPiOS/.test(userAgent);
   const isFirefox = /Firefox|FxiOS/.test(userAgent);
-
-  if (isIos && !isSafari) {
-    return {
-      intro: 'На iPhone та iPad встановлення вебзастосунків доступне через Safari.',
-      steps: [
-        'Відкрийте цю сторінку в Safari.',
-        'Натисніть «Поділитися».',
-        'Оберіть «На початковий екран», а потім «Додати».',
-      ],
-    };
-  }
 
   if (isIos) {
     return {
-      intro: 'Safari встановлює вебзастосунки через меню поширення.',
+      intro: 'Встановлення на iPhone та iPad доступне через меню поширення.',
       steps: [
-        'Натисніть «Поділитися».',
-        'Оберіть «На початковий екран».',
-        'Натисніть «Додати».',
+        'Натисніть кнопку «Поширити» (Share) та виберіть «На початковий екран» (Add to Home Screen).',
       ],
     };
   }
