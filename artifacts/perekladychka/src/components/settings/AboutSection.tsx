@@ -1,8 +1,10 @@
 import { useCallback, useState } from 'react';
 import { useLocation } from 'wouter';
-import { History, Info, Link2, ListChecks, RefreshCw } from 'lucide-react';
+import { Download, History, Info, Link2, ListChecks, RefreshCw } from 'lucide-react';
 import { INSTALLED_VERSION } from '@/releaseInfo';
 import type { ReleaseNotesState } from '@/pwaUpdate';
+import { installPwa, usePwaInstall } from '@/pwaInstall';
+import { PwaInstallDialog } from './PwaInstallDialog';
 import { ReleaseNotesDialog } from './ReleaseNotesDialog';
 import { SettingsRow } from './SettingsRow';
 import { ShareAppDialog } from './ShareAppDialog';
@@ -30,6 +32,8 @@ export function AboutSection({
   onShowToast,
 }: AboutSectionProps) {
   const [, setLocation] = useLocation();
+  const installState = usePwaInstall();
+  const [showInstallDialog, setShowInstallDialog] = useState(false);
   const [showShareDialog, setShowShareDialog] = useState(false);
   const [showReleaseNotes, setShowReleaseNotes] = useState(false);
   const appUrl = getAppUrl();
@@ -42,6 +46,26 @@ export function AboutSection({
     setShowReleaseNotes(true);
     onLoadReleaseNotes();
   };
+
+  const handleInstallApp = () => {
+    void installPwa().then(result => {
+      if (result === 'accepted' || result === 'installed') {
+        onShowToast('success', 'Застосунок встановлено.');
+      } else if (result === 'dismissed') {
+        onShowToast('error', 'Встановлення скасовано.');
+      } else {
+        setShowInstallDialog(true);
+      }
+    });
+  };
+
+  const installRowTitle = installState.isInstalling
+    ? 'Відкриття встановлення…'
+    : 'Встановити додаток';
+
+  const installRowSubtitle = installState.status === 'available'
+    ? 'Встановити як PWA без пошуку команди в меню браузера'
+    : 'Переглянути інструкцію для цього браузера';
 
   return (
     <>
@@ -96,6 +120,15 @@ export function AboutSection({
             subtitle='Що нового в кожній версії'
             onClick={() => setLocation('/changelog')}
           />
+          {installState.status !== 'installed' && (
+            <SettingsRow
+              icon={<Download className='w-5 h-5' />}
+              title={installRowTitle}
+              subtitle={installRowSubtitle}
+              onClick={handleInstallApp}
+              disabled={installState.isInstalling}
+            />
+          )}
           <SettingsRow
             icon={<Link2 className='w-5 h-5' />}
             title='Поділитися додатком'
@@ -114,6 +147,8 @@ export function AboutSection({
           onShowToast={onShowToast}
         />
       )}
+
+      <PwaInstallDialog open={showInstallDialog} onOpenChange={setShowInstallDialog} />
 
       <ReleaseNotesDialog
         open={showReleaseNotes}
