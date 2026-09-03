@@ -12,11 +12,16 @@ type BeforeInstallPromptEvent = Event & {
 };
 
 export type PwaInstallState = {
-  status: 'available' | 'installed' | 'unavailable';
+  status: 'available' | 'installed' | 'manual';
   isInstalling: boolean;
 };
 
-export type PwaInstallResult = 'accepted' | 'dismissed' | 'installed' | 'unavailable';
+export type PwaInstallResult = 'accepted' | 'dismissed' | 'installed' | 'manual';
+
+export type PwaInstallInstructions = {
+  intro: string;
+  steps: string[];
+};
 
 const listeners = new Set<() => void>();
 
@@ -25,7 +30,7 @@ let initialized = false;
 let standaloneQuery: MediaQueryList | null = null;
 
 let snapshot: PwaInstallState = {
-  status: 'unavailable',
+  status: 'manual',
   isInstalling: false,
 };
 
@@ -56,8 +61,65 @@ function updateInstalledState() {
     deferredPrompt = null;
     emit({ status: 'installed', isInstalling: false });
   } else if (snapshot.status === 'installed') {
-    emit({ status: deferredPrompt ? 'available' : 'unavailable', isInstalling: false });
+    emit({ status: deferredPrompt ? 'available' : 'manual', isInstalling: false });
   }
+}
+
+export function getPwaInstallInstructions(): PwaInstallInstructions {
+  if (typeof window === 'undefined') {
+    return {
+      intro: 'Скористайтеся командою встановлення в меню браузера.',
+      steps: ['Відкрийте меню браузера.', 'Оберіть «Встановити додаток» або «Додати на головний екран».'],
+    };
+  }
+
+  const userAgent = window.navigator.userAgent;
+  const isIos = /iPad|iPhone|iPod/.test(userAgent)
+    || (window.navigator.platform === 'MacIntel' && window.navigator.maxTouchPoints > 1);
+  const isSafari = /Safari/.test(userAgent) && !/CriOS|FxiOS|EdgiOS|OPiOS/.test(userAgent);
+  const isFirefox = /Firefox|FxiOS/.test(userAgent);
+
+  if (isIos && !isSafari) {
+    return {
+      intro: 'На iPhone та iPad встановлення вебзастосунків доступне через Safari.',
+      steps: [
+        'Відкрийте цю сторінку в Safari.',
+        'Натисніть «Поділитися».',
+        'Оберіть «На початковий екран», а потім «Додати».',
+      ],
+    };
+  }
+
+  if (isIos) {
+    return {
+      intro: 'Safari встановлює вебзастосунки через меню поширення.',
+      steps: [
+        'Натисніть «Поділитися».',
+        'Оберіть «На початковий екран».',
+        'Натисніть «Додати».',
+      ],
+    };
+  }
+
+  if (isFirefox) {
+    return {
+      intro: 'Firefox не дозволяє сторінці самостійно відкрити системне встановлення.',
+      steps: [
+        'Відкрийте меню Firefox.',
+        'Оберіть «Встановити» або «Додати на головний екран».',
+        'Підтвердьте встановлення.',
+      ],
+    };
+  }
+
+  return {
+    intro: 'Браузер не надав сторінці прямий доступ до системного встановлення.',
+    steps: [
+      'Відкрийте меню браузера.',
+      'Оберіть «Встановити додаток» або «Додати на головний екран».',
+      'Підтвердьте встановлення.',
+    ],
+  };
 }
 
 export function initializePwaInstallPrompt() {
@@ -94,7 +156,7 @@ export async function installPwa(): Promise<PwaInstallResult> {
   }
 
   const prompt = deferredPrompt;
-  if (!prompt || snapshot.isInstalling) return 'unavailable';
+  if (!prompt || snapshot.isInstalling) return 'manual';
 
   emit({ isInstalling: true });
 
@@ -108,12 +170,12 @@ export async function installPwa(): Promise<PwaInstallResult> {
       return 'accepted';
     }
 
-    emit({ status: 'unavailable', isInstalling: false });
+    emit({ status: 'manual', isInstalling: false });
     return 'dismissed';
   } catch (error) {
     console.warn('Failed to open PWA install prompt', error);
-    emit({ status: deferredPrompt ? 'available' : 'unavailable', isInstalling: false });
-    return 'unavailable';
+    emit({ status: deferredPrompt ? 'available' : 'manual', isInstalling: false });
+    return 'manual';
   }
 }
 
