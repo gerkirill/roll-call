@@ -53,9 +53,9 @@ export function AboutSection({
             <div className='font-bold text-lg mb-1'>Перекличка</div>
             <div className='mb-3'>
               <div className='text-sm text-muted-foreground'>Версія {INSTALLED_VERSION}</div>
-              {updateAvailable && (
+              {availableVersion && (
                 <div aria-live='polite' className='mt-0.5 text-xs font-semibold text-primary'>
-                  {availableVersion ? `Доступна версія ${availableVersion}` : 'Доступна нова версія'}
+                  Доступна версія {availableVersion}
                 </div>
               )}
               {updateAvailable && (
