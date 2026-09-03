@@ -1,13 +1,18 @@
 import { useCallback, useState } from 'react';
 import { useLocation } from 'wouter';
 import { History, Info, Link2, ListChecks, RefreshCw } from 'lucide-react';
+import { INSTALLED_VERSION } from '@/releaseInfo';
+import type { ReleaseNotesState } from '@/pwaUpdate';
+import { ReleaseNotesDialog } from './ReleaseNotesDialog';
 import { SettingsRow } from './SettingsRow';
 import { ShareAppDialog } from './ShareAppDialog';
 
 type AboutSectionProps = {
   updateAvailable: boolean;
   isUpdating: boolean;
+  releaseNotes: ReleaseNotesState;
   onApplyUpdate: () => void;
+  onLoadReleaseNotes: () => void;
   onShowToast: (kind: 'success' | 'error', message: string) => void;
 };
 
@@ -16,13 +21,27 @@ function getAppUrl(): string {
   return new URL(import.meta.env.BASE_URL, window.location.origin).toString();
 }
 
-export function AboutSection({ updateAvailable, isUpdating, onApplyUpdate, onShowToast }: AboutSectionProps) {
+export function AboutSection({
+  updateAvailable,
+  isUpdating,
+  releaseNotes,
+  onApplyUpdate,
+  onLoadReleaseNotes,
+  onShowToast,
+}: AboutSectionProps) {
   const [, setLocation] = useLocation();
   const [showShareDialog, setShowShareDialog] = useState(false);
+  const [showReleaseNotes, setShowReleaseNotes] = useState(false);
   const appUrl = getAppUrl();
   const isDevelopmentUrl = import.meta.env.DEV
     || (typeof window !== 'undefined' && window.location.hostname.endsWith('.replit.dev'));
   const closeShareDialog = useCallback(() => setShowShareDialog(false), []);
+  const availableVersion = releaseNotes.status === 'ready' ? releaseNotes.latestVersion : null;
+
+  const openReleaseNotes = () => {
+    setShowReleaseNotes(true);
+    onLoadReleaseNotes();
+  };
 
   return (
     <>
@@ -32,22 +51,33 @@ export function AboutSection({ updateAvailable, isUpdating, onApplyUpdate, onSho
           <div className='w-12 h-12 rounded-2xl bg-primary flex items-center justify-center shrink-0'><Info className='w-6 h-6 text-primary-foreground' /></div>
           <div className='flex-1 min-w-0'>
             <div className='font-bold text-lg mb-1'>Перекличка</div>
-            <div className='flex items-center justify-between gap-3 mb-3'>
-              <div className='min-w-0'>
-                <div className='text-sm text-muted-foreground'>Версія 1.0.23</div>
-                {updateAvailable && <div aria-live='polite' className='text-xs font-semibold text-primary mt-0.5'>Доступна нова версія</div>}
-              </div>
+            <div className='mb-3'>
+              <div className='text-sm text-muted-foreground'>Версія {INSTALLED_VERSION}</div>
               {updateAvailable && (
-                <button
-                  type='button'
-                  onClick={onApplyUpdate}
-                  disabled={isUpdating}
-                  aria-label='Оновити застосунок до нової версії'
-                  className='inline-flex shrink-0 items-center gap-1.5 rounded-lg bg-primary px-2.5 py-1.5 text-xs font-semibold text-primary-foreground active-elevate touch-manipulation disabled:opacity-60 disabled:pointer-events-none'
-                >
-                  <RefreshCw className={`w-3.5 h-3.5 ${isUpdating ? 'animate-spin' : ''}`} />
-                  {isUpdating ? 'Оновлення…' : 'Оновити'}
-                </button>
+                <div aria-live='polite' className='mt-0.5 text-xs font-semibold text-primary'>
+                  {availableVersion ? `Доступна версія ${availableVersion}` : 'Доступна нова версія'}
+                </div>
+              )}
+              {updateAvailable && (
+                <div className='mt-3 flex flex-wrap gap-2'>
+                  <button
+                    type='button'
+                    onClick={openReleaseNotes}
+                    className='inline-flex h-9 items-center rounded-lg bg-secondary px-3 text-xs font-semibold active-elevate touch-manipulation'
+                  >
+                    Що нового
+                  </button>
+                  <button
+                    type='button'
+                    onClick={onApplyUpdate}
+                    disabled={isUpdating}
+                    aria-label='Оновити застосунок до нової версії'
+                    className='inline-flex shrink-0 items-center gap-1.5 rounded-lg bg-primary px-2.5 py-1.5 text-xs font-semibold text-primary-foreground active-elevate touch-manipulation disabled:opacity-60 disabled:pointer-events-none'
+                  >
+                    <RefreshCw className={`w-3.5 h-3.5 ${isUpdating ? 'animate-spin' : ''}`} />
+                    {isUpdating ? 'Оновлення…' : 'Оновити'}
+                  </button>
+                </div>
               )}
             </div>
             <p className='text-sm leading-relaxed'>Швидкий інструмент для ведення переклички. Всі дані зберігаються виключно на вашому пристрої.</p>
@@ -84,6 +114,13 @@ export function AboutSection({ updateAvailable, isUpdating, onApplyUpdate, onSho
           onShowToast={onShowToast}
         />
       )}
+
+      <ReleaseNotesDialog
+        open={showReleaseNotes}
+        releaseNotes={releaseNotes}
+        onOpenChange={setShowReleaseNotes}
+        onRetry={onLoadReleaseNotes}
+      />
     </>
   );
 }

@@ -1,10 +1,26 @@
+import { readFileSync } from 'node:fs';
 import path from 'path';
 import react from '@vitejs/plugin-react';
 import tailwindcss from '@tailwindcss/vite';
-import { defineConfig } from 'vite';
+import { defineConfig, type Plugin } from 'vite';
 import { VitePWA } from 'vite-plugin-pwa';
 
 import runtimeErrorOverlay from '@replit/vite-plugin-runtime-error-modal';
+import { validateChangelog } from './src/lib/changelog';
+
+function changelogAsset(): Plugin {
+  const changelogPath = path.resolve(import.meta.dirname, '..', '..', 'CHANGELOG.md');
+
+  return {
+    name: 'changelog-asset',
+    apply: 'build',
+    generateBundle() {
+      const source = readFileSync(changelogPath, 'utf8');
+      validateChangelog(source);
+      this.emitFile({ type: 'asset', fileName: 'changelog.md', source });
+    },
+  };
+}
 
 const rawPort = process.env.PORT;
 
@@ -34,6 +50,7 @@ export default defineConfig({
     react(),
     tailwindcss(),
     runtimeErrorOverlay(),
+    changelogAsset(),
     VitePWA({
       registerType: 'prompt',
       injectRegister: false,
@@ -52,8 +69,15 @@ export default defineConfig({
         ]
       },
       workbox: {
-        globPatterns: ['**/*.{js,css,html,ico,png,svg}']
-      }
+        globPatterns: ['**/*.{js,css,html,ico,png,svg}'],
+        globIgnores: ['**/changelog.md'],
+        runtimeCaching: [
+          {
+            urlPattern: ({ url }) => url.pathname.endsWith('/changelog.md'),
+            handler: 'NetworkOnly',
+          },
+        ],
+      },
     }),
     ...(process.env.NODE_ENV !== 'production' &&
     process.env.REPL_ID !== undefined

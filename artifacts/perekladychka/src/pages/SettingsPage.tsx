@@ -5,7 +5,7 @@ import { AboutSection } from '@/components/settings/AboutSection';
 import { SettingsRow } from '@/components/settings/SettingsRow';
 import { useImportExport } from '@/hooks/useImportExport';
 import { useAppData } from '@/hooks/useAppData';
-import { applyPwaUpdate, usePwaUpdate } from '@/pwaUpdate';
+import { applyPwaUpdate, loadPwaReleaseNotes, usePwaUpdate } from '@/pwaUpdate';
 import { encodeShareString, type TextExportFormat } from '@/utils/share';
 
 const TEXT_EXPORT_FORMAT_STORAGE_KEY = 'perekladychka-text-export-format';
@@ -62,7 +62,7 @@ function legacyCopy(text: string): CopyResult {
 export default function SettingsPage() {
   const { exportData, importData, importFromString, clearData } = useImportExport();
   const { data } = useAppData();
-  const { updateAvailable, isUpdating } = usePwaUpdate();
+  const { updateAvailable, isUpdating, releaseNotes } = usePwaUpdate();
   const fileInputRef = useRef<HTMLInputElement>(null);
   const toastTimerRef = useRef<number | null>(null);
   const preparationRunRef = useRef(0);
@@ -281,7 +281,9 @@ export default function SettingsPage() {
         <AboutSection
           updateAvailable={updateAvailable}
           isUpdating={isUpdating}
+          releaseNotes={releaseNotes}
           onApplyUpdate={applyPwaUpdate}
+          onLoadReleaseNotes={loadPwaReleaseNotes}
           onShowToast={showToast}
         />
 
