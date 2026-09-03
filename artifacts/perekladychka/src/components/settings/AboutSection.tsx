@@ -4,6 +4,7 @@ import { Download, History, Info, Link2, ListChecks, RefreshCw } from 'lucide-re
 import { INSTALLED_VERSION } from '@/releaseInfo';
 import type { ReleaseNotesState } from '@/pwaUpdate';
 import { installPwa, usePwaInstall } from '@/pwaInstall';
+import { PwaInstallDialog } from './PwaInstallDialog';
 import { ReleaseNotesDialog } from './ReleaseNotesDialog';
 import { SettingsRow } from './SettingsRow';
 import { ShareAppDialog } from './ShareAppDialog';
@@ -32,6 +33,7 @@ export function AboutSection({
 }: AboutSectionProps) {
   const [, setLocation] = useLocation();
   const installState = usePwaInstall();
+  const [showInstallDialog, setShowInstallDialog] = useState(false);
   const [showShareDialog, setShowShareDialog] = useState(false);
   const [showReleaseNotes, setShowReleaseNotes] = useState(false);
   const appUrl = getAppUrl();
@@ -52,20 +54,18 @@ export function AboutSection({
       } else if (result === 'dismissed') {
         onShowToast('error', 'Встановлення скасовано.');
       } else {
-        onShowToast('error', 'Браузер не дозволяє встановити застосунок із цієї сторінки.');
+        setShowInstallDialog(true);
       }
     });
   };
 
   const installRowTitle = installState.isInstalling
     ? 'Відкриття встановлення…'
-    : installState.status === 'available'
-      ? 'Встановити додаток'
-      : 'Встановлення недоступне';
+    : 'Встановити додаток';
 
   const installRowSubtitle = installState.status === 'available'
     ? 'Встановити як PWA без пошуку команди в меню браузера'
-    : 'Браузер поки не пропонує встановлення для цієї сторінки';
+    : 'Переглянути інструкцію для цього браузера';
 
   return (
     <>
@@ -126,7 +126,7 @@ export function AboutSection({
               title={installRowTitle}
               subtitle={installRowSubtitle}
               onClick={handleInstallApp}
-              disabled={installState.status !== 'available' || installState.isInstalling}
+              disabled={installState.isInstalling}
             />
           )}
           <SettingsRow
@@ -147,6 +147,8 @@ export function AboutSection({
           onShowToast={onShowToast}
         />
       )}
+
+      <PwaInstallDialog open={showInstallDialog} onOpenChange={setShowInstallDialog} />
 
       <ReleaseNotesDialog
         open={showReleaseNotes}
