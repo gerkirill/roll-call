@@ -1,15 +1,27 @@
 import { useSyncExternalStore } from 'react';
+import { getNewerReleases, validateChangelog, type ChangelogRelease } from '@/lib/changelog';
+import { INSTALLED_VERSION } from '@/releaseInfo';
+
+export type ReleaseNotesState =
+  | { status: 'idle' }
+  | { status: 'loading' }
+  | { status: 'ready'; latestVersion: string; releases: ChangelogRelease[] }
+  | { status: 'error'; message: string };
 
 type PwaUpdateState = {
   updateAvailable: boolean;
   isUpdating: boolean;
+  releaseNotes: ReleaseNotesState;
 };
+
+const MAX_CHANGELOG_BYTES = 256 * 1024;
 
 const listeners = new Set<() => void>();
 
 let snapshot: PwaUpdateState = {
   updateAvailable: false,
   isUpdating: false,
+  releaseNotes: { status: 'idle' },
 };
 
 let registration: ServiceWorkerRegistration | null = null;
@@ -17,6 +29,8 @@ let waitingWorker: ServiceWorker | null = null;
 let initialized = false;
 let reloadRequested = false;
 let reloadStarted = false;
+let releaseNotesRequestId = 0;
+let releaseNotesAbortController: AbortController | null = null;
 
 function emit(next: Partial<PwaUpdateState>) {
   snapshot = { ...snapshot, ...next };
@@ -32,10 +46,84 @@ function getSnapshot() {
   return snapshot;
 }
 
+function getRemoteChangelogUrl(): string {
+  const baseUrl = new URL(import.meta.env.BASE_URL, window.location.origin);
+  const url = new URL('changelog.md', baseUrl);
+  url.searchParams.set('update-check', Date.now().toString());
+  return url.href;
+}
+
+function releaseNotesError(error: unknown): string {
+  console.warn('Failed to load PWA release notes', error);
+  return 'Не вдалося завантажити опис оновлення. Саме оновлення вже готове до встановлення.';
+}
+
+export function loadPwaReleaseNotes() {
+  if (!snapshot.updateAvailable) return;
+
+  const requestId = ++releaseNotesRequestId;
+  releaseNotesAbortController?.abort();
+  const abortController = new AbortController();
+  releaseNotesAbortController = abortController;
+  emit({ releaseNotes: { status: 'loading' } });
+
+  void fetch(getRemoteChangelogUrl(), {
+    cache: 'no-store',
+    headers: { Accept: 'text/markdown' },
+    signal: abortController.signal,
+  }).then(async response => {
+    if (!response.ok) throw new Error(`Changelog request failed with ${response.status}`);
+
+    const declaredSize = Number(response.headers.get('content-length'));
+    if (Number.isFinite(declaredSize) && declaredSize > MAX_CHANGELOG_BYTES) {
+      throw new Error('Remote changelog is too large');
+    }
+
+    const markdown = await response.text();
+    if (new TextEncoder().encode(markdown).byteLength > MAX_CHANGELOG_BYTES) {
+      throw new Error('Remote changelog is too large');
+    }
+
+    const releases = getNewerReleases(validateChangelog(markdown), INSTALLED_VERSION);
+    if (!releases.length) {
+      throw new Error('Remote changelog does not contain a newer release');
+    }
+
+    if (requestId !== releaseNotesRequestId) return;
+    emit({
+      releaseNotes: {
+        status: 'ready',
+        latestVersion: releases[0].version,
+        releases,
+      },
+    });
+  }).catch(error => {
+    if (requestId !== releaseNotesRequestId || abortController.signal.aborted) return;
+    emit({
+      releaseNotes: {
+        status: 'error',
+        message: error instanceof Error && error.message.includes('newer release')
+          ? 'Опис оновлення ще недоступний.'
+          : releaseNotesError(error),
+      },
+    });
+  }).finally(() => {
+    if (requestId === releaseNotesRequestId) releaseNotesAbortController = null;
+  });
+}
+
 function markUpdateAvailable(worker: ServiceWorker | null) {
   if (!worker || !navigator.serviceWorker.controller) return;
+
+  const workerChanged = waitingWorker !== worker;
   waitingWorker = worker;
-  emit({ updateAvailable: true });
+  if (snapshot.updateAvailable && !workerChanged) return;
+
+  releaseNotesRequestId += 1;
+  releaseNotesAbortController?.abort();
+  releaseNotesAbortController = null;
+  emit({ updateAvailable: true, releaseNotes: { status: 'idle' } });
+  loadPwaReleaseNotes();
 }
 
 function watchRegistration(nextRegistration: ServiceWorkerRegistration) {
