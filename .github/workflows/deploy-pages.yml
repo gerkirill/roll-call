@@ -33,6 +33,10 @@ jobs:
         run: pnpm --filter @workspace/perekladychka build
         env:
           BASE_PATH: ${{ steps.pages.outputs.base_path }}/
+      - name: Verify Pages output
+        run: node scripts/check-pages-build.mjs
+        env:
+          BASE_PATH: ${{ steps.pages.outputs.base_path }}/
       - uses: actions/upload-pages-artifact@v3
         with:
           path: artifacts/perekladychka/dist/public
