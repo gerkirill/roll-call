@@ -2,7 +2,7 @@ name: Deploy to GitHub Pages
 
 on:
   push:
-    branches: [main]
+    branches: [pages-preview]
   workflow_dispatch:
 
 permissions:
@@ -42,7 +42,7 @@ jobs:
           path: artifacts/perekladychka/dist/public
 
   deploy:
-    if: github.ref == 'refs/heads/main'
+    if: github.ref == 'refs/heads/pages-preview'
     needs: build
     runs-on: ubuntu-latest
     permissions:

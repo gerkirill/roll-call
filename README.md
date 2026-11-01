@@ -7,8 +7,11 @@ A browser-local roll-call PWA built with React, TypeScript, Vite, and pnpm works
 Production: **https://gerkirill.github.io/roll-call/**
 
 1. In the GitHub repository, open **Settings → Pages → Build and deployment** and select **GitHub Actions** as the source.
-2. Merge the changes into `main`. The **Deploy to GitHub Pages** workflow installs dependencies, typechecks the workspace, builds and checks the PWA, then publishes it. You can also run it manually from **Actions** on `main`.
-3. Wait for a successful deployment before sharing the production URL.
+2. Push the `pages-preview` branch, which contains the frontend and deployment changes: `git push -u origin pages-preview`. The **Deploy to GitHub Pages** workflow installs dependencies, typechecks the workspace, builds and checks the PWA, then publishes it. Pushes to `main` do not deploy.
+3. In **Settings → Environments → github-pages**, ensure deployment branch rules allow `pages-preview`.
+4. Wait for a successful deployment before sharing the production URL.
+
+For now, `pages-preview` is the only branch permitted by the workflow to deploy. To release further changes, bring them onto that branch and push it. Manual dispatch is also supported for `pages-preview` once GitHub exposes the workflow in Actions (the workflow must exist on the default branch for the manual-run UI to be available).
 
 Only `artifacts/perekladychka/dist/public` is published. No database, API host, deployment secret, or Replit account is required. The API, DB, and mockup packages are retained scaffolding, not production services.
 

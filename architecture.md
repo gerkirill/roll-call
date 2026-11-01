@@ -7,7 +7,7 @@ title: Static PWA deployment
 
 ## Hosting boundary
 
-Перекличка is deployed as a static, browser-local PWA on GitHub Pages at `https://gerkirill.github.io/roll-call/`. Production serves only the frontend; the repository's API and database scaffolding are not runtime dependencies. GitHub Actions publishes from `main`, with manual dispatch supported, rather than requiring a Replit runtime.
+Перекличка is deployed as a static, browser-local PWA on GitHub Pages at `https://gerkirill.github.io/roll-call/`. Production serves only the frontend; the repository's API and database scaffolding are not runtime dependencies. GitHub Actions currently publishes only from the separate `pages-preview` branch, rather than requiring a Replit runtime. Pushes to `main` do not deploy; manual dispatch is also restricted to `pages-preview`. This temporary branch isolation keeps Pages deployment independent of mainline changes.
 
 ## URL and offline contract
 
